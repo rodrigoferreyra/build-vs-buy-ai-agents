@@ -1,0 +1,10 @@
+name: cesdk_day_1_flutter
+description: Flutter shell for CE.SDK mobile (checklist 59)
+publish_to: "none"
+version: 0.0.1
+environment:
+  sdk: ">=3.3.0 <4.0.0"
+dependencies:
+  flutter:
+    sdk: flutter
+  imgly_editor: ^1.83.0

@@ -80,7 +80,7 @@ export function setupFeatures(cesdk: CreativeEditorSDK): void {
     'ly.img.fill.color.picker.gradient' /* Gradient mode selector and stops editor */,
     'ly.img.fill.color.picker.opacity' /* Alpha/opacity slider */,
     'ly.img.fill.image' /* Image fill controls and crop */,
-    // 'ly.img.fill.video', /* Video fill, trim, volume, speed */
+    'ly.img.fill.video' /* Video fill, trim, volume, speed */,
 
     'ly.img.filter' /* Filter button */,
 
@@ -256,9 +256,9 @@ export function setupFeatures(cesdk: CreativeEditorSDK): void {
     'ly.img.transform.rotation' /* Rotation controls */,
     'ly.img.transform.size' /* Width and height controls */,
 
-    // 'ly.img.transitions', /* Transitions button (video mode) */
+    'ly.img.transitions' /* Transitions button (video mode) */,
 
-    'ly.img.trim' /* Trim button (video mode) */
+    'ly.img.trim' /* Trim button (video mode) */,
 
     // 'ly.img.vectorEdit', /* Vector edit controls (parent) */
     // 'ly.img.vectorEdit.addMode', /* Add node mode toggle */
@@ -268,24 +268,24 @@ export function setupFeatures(cesdk: CreativeEditorSDK): void {
     // 'ly.img.vectorEdit.mirrorMode', /* Handle mirror mode dropdown */
     // 'ly.img.vectorEdit.moveMode', /* Move/select mode toggle */
 
-    // 'ly.img.video', /* Enables all children below */
-    // 'ly.img.video.caption', /* Video captions */
-    // 'ly.img.video.timeline', /* Video Timeline visibility */
-    // 'ly.img.video.timeline.addClip', /* Add clips to timeline */
-    // 'ly.img.video.timeline.audio', /* Audio track in timeline */
-    // 'ly.img.video.timeline.clip.menu', /* Clip ellipsis button */
-    // 'ly.img.video.timeline.clips', /* Clips track in timeline */
-    // 'ly.img.video.timeline.controls', /* Base video control UI */
-    // 'ly.img.video.timeline.controls.background', /* Background color controls */
-    // 'ly.img.video.timeline.controls.bar', /* Timeline controls bar area */
-    // 'ly.img.video.timeline.controls.loop', /* Loop toggle */
-    // 'ly.img.video.timeline.controls.playback', /* Play/pause and timestamp */
-    // 'ly.img.video.timeline.controls.split', /* Split clip control */
-    // 'ly.img.video.timeline.controls.timelineZoom', /* Timeline zoom controls */
-    // 'ly.img.video.timeline.controls.toggle', /* Timeline collapse/expand toggle */
-    // 'ly.img.video.timeline.overlays', /* Overlays track in timeline */
-    // 'ly.img.video.timeline.ruler', /* Timeline ruler/time scale */
+    'ly.img.video' /* Enables all children below */,
+    'ly.img.video.caption' /* Video captions */,
+    'ly.img.video.timeline' /* Video Timeline visibility */,
+    'ly.img.video.timeline.addClip' /* Add clips to timeline */,
+    'ly.img.video.timeline.audio' /* Audio track in timeline */,
+    'ly.img.video.timeline.clip.menu' /* Clip ellipsis button */,
+    'ly.img.video.timeline.clips' /* Clips track in timeline */,
+    'ly.img.video.timeline.controls' /* Base video control UI */,
+    'ly.img.video.timeline.controls.background' /* Background color controls */,
+    'ly.img.video.timeline.controls.bar' /* Timeline controls bar area */,
+    'ly.img.video.timeline.controls.loop' /* Loop toggle */,
+    'ly.img.video.timeline.controls.playback' /* Play/pause and timestamp */,
+    'ly.img.video.timeline.controls.split' /* Split clip control */,
+    'ly.img.video.timeline.controls.timelineZoom' /* Timeline zoom controls */,
+    'ly.img.video.timeline.controls.toggle' /* Timeline collapse/expand toggle */,
+    'ly.img.video.timeline.overlays' /* Overlays track in timeline */,
+    'ly.img.video.timeline.ruler' /* Timeline ruler/time scale */,
 
-    // 'ly.img.volume' /* Volume control (video mode) */
+    'ly.img.volume' /* Volume control (video mode) */,
   ]);
 }

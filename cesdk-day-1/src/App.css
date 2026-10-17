@@ -52,6 +52,28 @@ body,
   min-height: 0;
 }
 
+.cesdk-chrome button,
+.cesdk-chrome select,
+.cesdk-chrome input {
+  font: inherit;
+  color: inherit;
+  background: #2c313a;
+  border: 1px solid #3d4450;
+  border-radius: 4px;
+  padding: 0.15rem 0.4rem;
+}
+
+.cesdk-chrome button:focus-visible,
+.cesdk-chrome select:focus-visible,
+.cesdk-chrome input:focus-visible {
+  outline: 2px solid #7dd3fc;
+  outline-offset: 2px;
+}
+
+.cesdk-chrome input {
+  width: 7rem;
+}
+
 .license-banner {
   font-family: system-ui, sans-serif;
   max-width: 40rem;

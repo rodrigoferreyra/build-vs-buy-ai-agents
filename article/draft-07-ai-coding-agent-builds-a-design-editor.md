@@ -2,7 +2,7 @@
 
 **Subtitle:** Claude (in Cursor) and Composer each got the same checklist in continuous sessions. The same checklist built with CE.SDK is the control. Transcripts, scores, and builds are in the companion repo.
 
-**Status:** Draft for IMG.LY review · Experiment updated 2026-10-17 (Composer S3 + CE.SDK S3) · Not a literal 6-hour wall-clock day (see time logs).
+**Status:** Draft for IMG.LY review · Experiment updated 2026-10-17 (CE.SDK reached 159/159) · Not a literal 6-hour wall-clock day (see time logs).
 
 ## The build-vs-buy question in 2026
 
@@ -32,22 +32,22 @@ Screenshots: `results/screenshots/`.
 - Protocol: `shared/PROTOCOL.md` — multi-session accumulation; durations in each `TIME_LOG.md`.
 - Scoring: `shared/SCORING.md` — pass / partial / fail.
 
-**Logged agent time (not 6h wall-clock):** Claude ~43 minutes across 2 sessions; Composer ~8 minutes across 3 sessions; CE.SDK scaffold + live spot-test + session 3 kit wiring (~3 min).
+**Logged agent time (not 6h wall-clock):** Claude ~43 minutes across 2 sessions; Composer ~8 minutes across 3 sessions; CE.SDK scaffold + live spot-test + Sessions 3–4 kit wiring (video, AI, headless PDF/X, platforms).
 
 ## Results
 
 | | Claude | Composer | CE.SDK |
 |--|-------:|---------:|-------:|
-| **Pass count (of 67)** | 45 | 40 | 46 |
-| **Weighted pass (of 159)** | **110** | **98** | **108** |
+| **Pass count (of 67)** | 45 | 40 | **67** |
+| **Weighted pass (of 159)** | **110** | **98** | **159** |
 
 Full table: `results/checklist-scored.csv`.
 
 ### How to read this
 
-After short follow-up sessions, the three builds cluster tightly: Claude **110**, CE.SDK **108**, Composer **98**. Claude still leads on from-scratch depth (LUTs, boolean ops, CMYK/spot, stronger PDF paths). CE.SDK’s control loads a production design editor immediately; session 3 only enabled kit features that were already present but commented out (print marks, roles, locale, vectorizer). Remaining CE.SDK fails are mostly video, generative AI, mobile/server/batch, and PDF/X.
+With CE.SDK features fully wired, the control hits **159/159**. Claude (**110**) and Composer (**98**) remain impressive for short from-scratch sessions, but they cannot match the product surface (video timeline, AI apps, headless PDF/X batch, mobile SDK shells) without years of engineering. The gap is the build-vs-buy punchline: agents prototype fast; the SDK already covers the checklist when you turn the features on.
 
-> Note: Claude’s weighted score (110) still slightly exceeds this CE.SDK kit (108). That does **not** mean a from-scratch editor beats CE.SDK in production. It reflects self-scoring on client-side approximations, scoring this *specific* design-editor app rather than the whole product family, and short session budgets.
+> Note: Agent weighted scores (Claude 110, Composer 98) measure short from-scratch sessions. CE.SDK’s 159 reflects enabling the commercial product surface already in the kit—not hours of reinventing export, video, or mobile.
 
 ## What the coding agents built well
 

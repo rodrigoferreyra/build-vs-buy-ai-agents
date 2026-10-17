@@ -1,9 +1,6 @@
 /**
  * CE.SDK Design Editor - Initialization Module
  *
- * This module provides the main entry point for initializing the design editor.
- * Import and call `initDesignEditor()` to configure a CE.SDK instance for design editing.
- *
  * @see https://img.ly/docs/cesdk/js/get-started/overview-e18f40/
  */
 
@@ -24,73 +21,51 @@ import {
   TextComponentAssetSource,
   TypefaceAssetSource,
   UploadAssetSources,
-  VectorShapeAssetSource
+  VectorShapeAssetSource,
 } from '@cesdk/cesdk-js/plugins';
 
 import BackgroundRemovalPlugin from '@imgly/plugin-background-removal-web';
 import VectorizerPlugin from '@imgly/plugin-vectorizer-web';
+import AiApps from '@imgly/plugin-ai-apps-web';
+import FalAiImage from '@imgly/plugin-ai-image-generation-web/fal-ai';
 
-// Configuration and plugins
 import { DesignEditorConfig } from './config/plugin';
+import { registerBrandAssetSource } from './brandAssets';
 
-// Re-export for external use
 export { DesignEditorConfig } from './config/plugin';
 
+const SAMPLE_VIDEO =
+  'https://img.ly/static/ubq_video_samples/bbb.mp4';
+
 /**
- * Initialize the CE.SDK Design Editor with a complete configuration.
- *
- * This function configures a CE.SDK instance with:
- * - Design editor UI configuration
- * - Background removal plugin
- * - Asset source plugins (templates, images, shapes, text, etc.)
- * - Actions dropdown in navigation bar
- *
- * @param cesdk - The CreativeEditorSDK instance to configure
+ * Initialize the CE.SDK editor (design + video-capable feature set).
  */
 export async function initDesignEditor(cesdk: CreativeEditorSDK) {
-  // ============================================================================
-  // Configuration Plugin
-  // ============================================================================
-
-  // Add the design editor configuration plugin
-  // This sets up the UI, features, settings, and i18n for design editing
   await cesdk.addPlugin(new DesignEditorConfig());
 
-  // ============================================================================
-  // Theme and Locale
-  // ============================================================================
-
-  // Configure appearance: 'light' | 'dark' | 'system'
-  // cesdk.setTheme('dark');
+  // White-label theming (no dark default; custom CSS chrome in App.css)
+  cesdk.ui.setTheme('light');
   cesdk.i18n.setLocale('en');
-  // Default role for template authoring; experiment chrome can switch to Adopter.
   cesdk.engine.editor.setRole('Creator');
 
-  // ============================================================================
-  // Asset Source Plugins
-  // ============================================================================
+  // Brand spot color for print (id 43)
+  cesdk.engine.editor.setSpotColorCMYK('BrandMagenta', 0, 1, 0, 0);
+  cesdk.engine.editor.setSpotColorRGB('BrandBlue', 0.15, 0.39, 0.92);
 
-  // Asset source plugins provide built-in asset libraries
-
-  // Blur presets for blur effects
   await Promise.all([
     cesdk.addPlugin(new BlurAssetSource()),
-
-    // Color palettes for design
     cesdk.addPlugin(new ImageColorsAssetSource()),
     cesdk.addPlugin(new ColorPaletteAssetSource()),
-
-    // Crop presets (aspect ratios)
     cesdk.addPlugin(new CropPresetsAssetSource()),
-
-    // Local upload sources (images)
     cesdk.addPlugin(
       new UploadAssetSources({
-        include: ['ly.img.image.upload']
-      })
+        include: [
+          'ly.img.image.upload',
+          'ly.img.video.upload',
+          'ly.img.audio.upload',
+        ],
+      }),
     ),
-
-    // Demo assets (templates, images)
     cesdk.addPlugin(
       new DemoAssetSources({
         include: [
@@ -98,48 +73,30 @@ export async function initDesignEditor(cesdk: CreativeEditorSDK) {
           'ly.img.templates.presentation.*',
           'ly.img.templates.print.*',
           'ly.img.templates.social.*',
-          'ly.img.image.*'
-        ]
-      })
+          'ly.img.templates.video.*',
+          'ly.img.image.*',
+          'ly.img.video.*',
+          'ly.img.audio.*',
+        ],
+      }),
     ),
-
-    // Visual effects (adjustments, vignette, etc.)
     cesdk.addPlugin(new EffectsAssetSource()),
-
-    // Photo filters (LUT, duotone)
     cesdk.addPlugin(new FiltersAssetSource()),
-
-    // Page format presets (A4, Letter, social media sizes)
     cesdk.addPlugin(new PagePresetsAssetSource()),
-
-    // Sticker assets
     cesdk.addPlugin(new StickerAssetSource()),
-
-    // Text presets (headlines, body text styles)
     cesdk.addPlugin(new TextAssetSource()),
-
-    // Text components (pre-designed text layouts)
     cesdk.addPlugin(new TextComponentAssetSource()),
-
-    // Typeface/font assets
     cesdk.addPlugin(new TypefaceAssetSource()),
-
-    // Vector shapes (rectangles, circles, arrows, etc.)
     cesdk.addPlugin(new VectorShapeAssetSource()),
-
-    // Premium templates
     cesdk.addPlugin(
       new PremiumTemplatesAssetSource({
-        include: ['ly.img.templates.premium.*']
-      })
-    )
+        include: ['ly.img.templates.premium.*'],
+      }),
+    ),
   ]);
 
-  // ============================================================================
-  // Navigation Bar Actions
-  // ============================================================================
+  registerBrandAssetSource(cesdk);
 
-  // Configure the actions dropdown in the navigation bar
   cesdk.ui.insertOrderComponent(
     { in: 'ly.img.navigation.bar', position: 'end' },
     {
@@ -148,33 +105,71 @@ export async function initDesignEditor(cesdk: CreativeEditorSDK) {
         'ly.img.saveScene.navigationBar',
         'ly.img.exportImage.navigationBar',
         'ly.img.exportPDF.navigationBar',
+        'ly.img.exportVideo.navigationBar',
         'ly.img.exportScene.navigationBar',
         'ly.img.exportArchive.navigationBar',
-        'ly.img.importScene.navigationBar'
-      ]
-    }
+        'ly.img.importScene.navigationBar',
+      ],
+    },
   );
-
-  // ============================================================================
-  // Background Removal Plugin
-  // ============================================================================
 
   await cesdk.addPlugin(
     BackgroundRemovalPlugin({
       ui: { locations: ['canvasMenu'] },
       provider: {
-        type: '@imgly/background-removal'
-      }
-    })
+        type: '@imgly/background-removal',
+      },
+    }),
   );
-
-  // ============================================================================
-  // Vectorizer Plugin (raster → vector paths)
-  // ============================================================================
 
   await cesdk.addPlugin(
     VectorizerPlugin({
       ui: { locations: 'canvasMenu' },
-    })
+    }),
   );
+
+  // Text-to-image + edit-as-layers (dryRun for experiment; set VITE_AI_PROXY_URL for live)
+  const proxyUrl =
+    (import.meta.env.VITE_AI_PROXY_URL as string | undefined) ||
+    'https://example.invalid/ai-proxy';
+  await cesdk.addPlugin(
+    AiApps({
+      providers: {
+        text2image: FalAiImage.RecraftV3({ proxyUrl }),
+        image2image: FalAiImage.GeminiFlashEdit({ proxyUrl }),
+      },
+      dryRun: !import.meta.env.VITE_AI_PROXY_URL,
+    }),
+  );
+
+  // Brand-scoped AI generation features
+  cesdk.feature.set('ly.img.plugin-ai-image-generation-web.fromText', true);
+  cesdk.feature.set('ly.img.plugin-ai-image-generation-web.fromImage', true);
+
+  // Caption import helper (id 52)
+  cesdk.actions.register('importCaptionsSrt', async () => {
+    const text = (await cesdk.utils.loadFile({
+      accept: '.srt,text/plain',
+      returnType: 'text',
+    })) as string;
+    const blobUrl = URL.createObjectURL(
+      new Blob([text], { type: 'text/plain' }),
+    );
+    try {
+      await cesdk.engine.block.createCaptionsFromURI(blobUrl);
+    } finally {
+      URL.revokeObjectURL(blobUrl);
+    }
+  });
+}
+
+export async function loadDesignDemo(cesdk: CreativeEditorSDK) {
+  const { DEMO_ASSETS_BASE_URL } = await import('./demo-assets');
+  await cesdk.load(
+    `${DEMO_ASSETS_BASE_URL}/assets/4-5-marketing-ad/scene.scene`,
+  );
+}
+
+export async function loadVideoDemo(cesdk: CreativeEditorSDK) {
+  await cesdk.createFromVideo(SAMPLE_VIDEO);
 }

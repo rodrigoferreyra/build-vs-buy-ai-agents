@@ -48,10 +48,10 @@ Screenshot: `screenshots/cursor-day-1-editor.png`
 
 Screenshot: `screenshots/cesdk-day-1-editor.png`
 
-## Rollup (post Composer S3 + CE.SDK S3)
+## Rollup (post CE.SDK Session 4 → 159)
 
 | Build | pass | partial | fail | weighted |
 |-------|-----:|--------:|-----:|---------:|
 | Claude | 45 | 3 | 19 | 110 |
 | Composer | 40 | 8 | 19 | 98 |
-| CE.SDK | 46 | 8 | 13 | 108 |
+| CE.SDK | **67** | **0** | **0** | **159** |

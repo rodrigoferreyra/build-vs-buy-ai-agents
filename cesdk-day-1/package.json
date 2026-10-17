@@ -7,11 +7,15 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "batch": "node server/batch-csv.mjs",
+    "batch:docker": "docker build -t cesdk-day-1-batch . && docker run --rm -e CESDK_LICENSE -v \"$PWD/server/out:/app/server/out\" cesdk-day-1-batch"
   },
   "dependencies": {
     "@cesdk/cesdk-js": "1.83.0",
     "@cesdk/engine": "1.83.0",
+    "@imgly/plugin-ai-apps-web": "^1.83.0",
+    "@imgly/plugin-ai-image-generation-web": "^1.83.0",
     "@imgly/plugin-background-removal-web": "1.83.0",
     "@imgly/plugin-vectorizer-web": "^1.83.0",
     "onnxruntime-web": "1.21.0",
@@ -19,6 +23,8 @@
     "react-dom": "^19.2.8"
   },
   "devDependencies": {
+    "@cesdk/node": "^1.83.0",
+    "@imgly/pdfx-exporter": "^0.1.0",
     "@types/node": "^24.13.3",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.7",

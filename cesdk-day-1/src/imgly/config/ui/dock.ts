@@ -126,6 +126,9 @@ export function setupDock(cesdk: CreativeEditorSDK): void {
       entries: ['ly.img.sticker']
     },
 
+    // AI generation (filled by @imgly/plugin-ai-apps-web)
+    'ly.img.ai.apps.dock',
+
     // ============================
     // Layers & Pages
     // ============================
