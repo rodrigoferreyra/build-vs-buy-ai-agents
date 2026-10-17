@@ -28,3 +28,21 @@
 | Notes | Spot-test checklist after accepting VITE_CESDK_LICENSE |
 
 - Live check: editor UI loaded at http://127.0.0.1:5176/ (Templates, Elements, Uploads, Images, Text, Shapes, Stickers, Layers, Save). License via  accepted after App.tsx fix.
+
+---
+
+## Session 3 — wire kit-supported checklist gaps
+
+| Field | Value |
+|-------|-------|
+| Start (ISO local) | 2026-10-17T12:24:00-03:00 |
+| End (ISO local) | 2026-10-17T12:27:17-03:00 |
+| Duration | ~3 min |
+| Agent / model | Parent agent (inherit) |
+
+### Changes
+- Enabled print bleed/crop marks, text path/background, placeholders, CMYK picker, preview
+- Added `@imgly/plugin-vectorizer-web@1.83.0`
+- Chrome: Creator/Adopter role + EN/DE locale
+- Live verify: DE labels, Adopter hides Preview/Add Page, Print Setup bleed + print marks
+- Weighted pass **91 → 108 / 159**

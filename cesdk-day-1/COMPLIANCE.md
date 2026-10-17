@@ -1,12 +1,11 @@
 # COMPLIANCE — cesdk-day-1 (live re-score)
 
-| Metric | Value |
-|--------|-------|
-| Auditor | Parent agent (inherit), licensed UI |
-| pass | 38 |
-| partial | 12 |
-| fail | 17 |
-| weighted pass | 91 / 159 |
+| Metric | Session 2 (live) | Session 3 (wire + live) |
+|--------|-----------------:|------------------------:|
+| pass | 38 | 46 |
+| partial | 12 | 8 |
+| fail | 17 | 13 |
+| **weighted pass** | **91 / 159** | **108 / 159** |
 
 ## Spot-test set
 
@@ -23,6 +22,16 @@
 | 34 | pass |
 | 41 | pass |
 
+## Session 3 upgrades (live)
+
+| id | change |
+|----|--------|
+| 18, 19 | text path + text background features enabled |
+| 27 | `@imgly/plugin-vectorizer-web@1.83.0` registered |
+| 36, 39 | placeholders + Creator/Adopter chrome (`setRole`) |
+| 44, 46 | Document Print Setup bleed + print marks |
+| 64 | EN/DE locale switch (Photos→Fotos verified) |
+
 ## Verdict
 
-With a valid license the **design editor loads** (demo marketing scene, full dock, undo/zoom/save). This control still does **not** pass every checklist row: video, generative AI, mobile/server/batch, dual-role adopter UI, and PDF/X/crop-marks print extras are out of this kit. Weighted pass **91/159** after live UI verification (up from the earlier config-only pass set where runtime was blocked).
+Session 3 wired kit-supported gaps that were previously commented out or not plugged. Video, generative AI, mobile/server/batch, and PDF/X remain out of this design-editor experiment scope. Weighted pass **108/159**.

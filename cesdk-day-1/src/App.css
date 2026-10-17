@@ -8,6 +8,50 @@ body,
   overflow: hidden;
 }
 
+.cesdk-shell {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+}
+
+.cesdk-chrome {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-shrink: 0;
+  padding: 0.4rem 0.75rem;
+  font: 13px/1.3 system-ui, sans-serif;
+  color: #e8eaed;
+  background: #1a1d23;
+  border-bottom: 1px solid #2c313a;
+}
+
+.cesdk-chrome-label {
+  font-weight: 600;
+  margin-right: 0.25rem;
+}
+
+.cesdk-chrome label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.cesdk-chrome select {
+  font: inherit;
+  color: inherit;
+  background: #2c313a;
+  border: 1px solid #3d4450;
+  border-radius: 4px;
+  padding: 0.15rem 0.35rem;
+}
+
+.cesdk-editor {
+  flex: 1;
+  min-height: 0;
+}
+
 .license-banner {
   font-family: system-ui, sans-serif;
   max-width: 40rem;
