@@ -8,6 +8,7 @@ export function TopBar() {
   const canRedo = useStore((s) => s.future.length > 0)
   const role = useStore((s) => s.role)
   const status = useStore((s) => s.saveStatus)
+  const mode = useStore((s) => s.mode)
   const creator = role === 'creator'
 
   const download = () => {
@@ -60,6 +61,14 @@ export function TopBar() {
           ↷ Redo
         </button>
       </div>
+      <div className="group mode-switch" role="tablist" aria-label="Editor mode">
+        <button role="tab" aria-selected={mode === 'design'} className={mode === 'design' ? 'on' : ''} onClick={() => actions.setMode('design')}>
+          🎨 Design
+        </button>
+        <button role="tab" aria-selected={mode === 'video'} className={mode === 'video' ? 'on' : ''} onClick={() => actions.setMode('video')}>
+          🎬 Video
+        </button>
+      </div>
       <div className="spacer" />
       <span className="status">{status}</span>
       <label className="role">
@@ -69,9 +78,11 @@ export function TopBar() {
           <option value="adopter">Adopter</option>
         </select>
       </label>
-      <button className="primary" onClick={() => actions.set({ dialog: 'export' })}>
-        Export
-      </button>
+      {mode === 'design' && (
+        <button className="primary" onClick={() => actions.set({ dialog: 'export' })}>
+          Export
+        </button>
+      )}
     </header>
   )
 }

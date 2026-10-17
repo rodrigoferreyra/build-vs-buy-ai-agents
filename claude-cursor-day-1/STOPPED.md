@@ -62,6 +62,23 @@ Stopped by user request (~19 min into a single continuous agent session; hard st
 - `window.__lib = { pdf, render }` is exposed in `main.tsx` as a debug hook (like `window.__ed`).
 - The new Inspector panels (Variables, Vector parts, Remove background, LUT picker) were checked mostly through the store API rather than by hand-clicking every control.
 
-## Wrap
+## Wrap (after Session 2)
 
-Experiment wrapped after session 2 (user model-quota limit). No further agent sessions planned.
+Earlier note: experiment paused after session 2 on Other-models budget. Session 3 continued later.
+
+---
+
+# Session 3 (2026-10-17, ~18 min) – video
+
+Claude Sonnet 5.5 High built the Video Studio; Other Models usage limit hit during wrap. Parent finished rescore/docs. `npm run build` passes (JS bundle ≈1.65 MB).
+
+## Added
+- **Video Studio** (Design ↔ Video tabs): multi-track timeline, trim/split, sample + file import (IndexedDB persistence), text/sticker/design overlays, SRT/VTT captions, transitions (crossfade and others), mediabunny WebCodecs export (MP4/WebM, resolution + fps).
+- Deps staged for later work (not wired this session): imagetracerjs, onnxruntime-web, axe-core, @napi-rs/canvas, esbuild; empty German locale dict.
+
+## Still not done
+- PDF/X, text on path, vectorize, AI generation, headless/Docker, multi-framework / mobile shells, white-label, pluggable asset sources, WCAG pass, real i18n strings, ML background removal.
+- Remaining checklist weight ≈ **36 / 159**.
+
+## Wrap
+Session 3 stopped on user wrap + model quota. Score **123 / 159**. Further sessions optional.

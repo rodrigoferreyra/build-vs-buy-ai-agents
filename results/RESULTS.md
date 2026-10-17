@@ -2,7 +2,7 @@
 
 | Build | Model | Sessions | pass | partial | fail | weighted / 159 |
 |-------|-------|----------|-----:|--------:|-----:|---------------:|
-| claude-cursor-day-1 | Claude Sonnet 5.5 High | 2 | 45 | 3 | 19 | 110 |
+| claude-cursor-day-1 | Claude Sonnet 5.5 High | 3 | 51 | 3 | 13 | 123 |
 | cursor-day-1 | Composer 2.5 Fast | 4 | **67** | **0** | **0** | **159** |
 | cesdk-day-1 | Parent + CE.SDK 1.83.0 | scaffold + live + S3/S4 | **67** | **0** | **0** | **159** |
 

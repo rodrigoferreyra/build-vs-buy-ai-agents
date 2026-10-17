@@ -6,17 +6,17 @@ Auditor: Claude Sonnet 5.5 High (`claude-sonnet-5-5-high`) · 2026-10-16 · agai
 
 | status | count |
 |--------|-------|
-| pass | 45 |
+| pass | 51 |
 | partial | 3 |
-| fail | 19 |
+| fail | 13 |
 | n/a | 0 |
 | **total** | **67** |
 
-- **Weighted pass** (sum of `weight` where status = pass): **110** of 159 possible (about 69 %). *(Session 1: 87.)*
-- Weight of partials (not counted): 9. Weight of fails: 40.
+- **Weighted pass** (sum of `weight` where status = pass): **123** of 159 possible (about 77 %). *(Session 2: 110; Session 1: 87.)*
+- Weight of partials (not counted): 9. Weight of fails: 27.
 - Partial ids: 25, 47, 61.
-- Fail ids: 18, 27, 45, 49–60, 62–65.
-- **Updated after Session 2** (counts above are current; the spot-test table below is the Session 1 snapshot). Improved: 20, 24, 28, 32, 34, 37, 38, 41, 43, 46 → pass; 25, 47, 61 → partial. See `PROGRESS.md` for evidence per row.
+- Fail ids: 18, 27, 45, 55–60, 62–65.
+- **Updated after Session 3:** video rows 49–54 → pass (+13 weight). Session 2 improved 20, 24, 28, 32, 34, 37, 38, 41, 43, 46 → pass; 25, 47, 61 → partial. Spot-test table below is still the Session 1 snapshot. See `PROGRESS.md` for evidence.
 
 ## Spot-test set (1, 3, 6, 7, 12, 13, 20, 22, 34, 41-export)
 

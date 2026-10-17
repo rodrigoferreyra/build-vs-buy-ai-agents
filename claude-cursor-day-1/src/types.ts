@@ -1,3 +1,5 @@
+import type { VideoProject } from './video/types'
+
 export type Blend =
   | 'normal'
   | 'multiply'
@@ -221,6 +223,8 @@ export interface Doc {
   guides: Guide[]
   luts?: LutAsset[]
   data?: DataSource | null
+  /** video studio project (timeline) */
+  video?: VideoProject
 }
 
 export type Role = 'creator' | 'adopter'

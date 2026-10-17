@@ -7,6 +7,7 @@ import { Inspector } from './components/Inspector'
 import { PagesBar } from './components/PagesBar'
 import { Dialogs } from './components/Dialogs'
 import { addImageFiles } from './upload'
+import { VideoStudio } from './video/VideoStudio'
 
 function isTyping(t: EventTarget | null) {
   const el = t as HTMLElement | null
@@ -24,6 +25,7 @@ function useHotkeys() {
         saveLocal(true)
         return
       }
+      if (getState().mode === 'video' && !(mod && (key === 'z' || key === 'y'))) return
       if (typing) {
         // let inputs handle their own undo, but allow undo/redo when focus is on a range/select/etc.
         const t = e.target as HTMLInputElement
@@ -87,7 +89,7 @@ function useHotkeys() {
       }
     }
     const onPaste = (e: ClipboardEvent) => {
-      if (isTyping(e.target)) return
+      if (isTyping(e.target) || getState().mode === 'video') return
       const files = Array.from(e.clipboardData?.files || []).filter((f) => f.type.startsWith('image/'))
       if (files.length) {
         e.preventDefault()
@@ -130,19 +132,24 @@ export default function App() {
   useAutosave()
   const toastMsg = useStore((s) => s.toast)
   const role = useStore((s) => s.role)
+  const mode = useStore((s) => s.mode)
   return (
     <div className={'app role-' + role}>
       <TopBar />
-      <div className="main">
-        <LeftPanel />
-        <div className="center">
-          <Canvas />
-          <PagesBar />
+      {mode === 'video' ? (
+        <VideoStudio />
+      ) : (
+        <div className="main">
+          <LeftPanel />
+          <div className="center">
+            <Canvas />
+            <PagesBar />
+          </div>
+          <aside className="right">
+            <Inspector />
+          </aside>
         </div>
-        <aside className="right">
-          <Inspector />
-        </aside>
-      </div>
+      )}
       <Dialogs />
       {toastMsg && <div className="toast">{toastMsg}</div>}
     </div>
