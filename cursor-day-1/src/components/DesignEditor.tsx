@@ -46,6 +46,8 @@ import { ElementView } from './ElementView'
 import { LayerPanel } from './LayerPanel'
 import { PropertiesPanel } from './PropertiesPanel'
 import { ResizeHandles, type Handle } from './ResizeHandles'
+import { booleanShapes, pickShapesForBoolean, type BooleanOp } from '../utils/booleanOps'
+import { saveToUserStorage } from '../utils/userStorage'
 
 function getInitialState(): EditorState {
   const saved = loadFromLocalStorage()
@@ -81,7 +83,9 @@ export function DesignEditor() {
   const [exportFormat, setExportFormat] = useState<ExportFormat>('png')
   const [exportDpi, setExportDpi] = useState(96)
   const [exportBleed, setExportBleed] = useState(false)
-  const [exportCropMarks, setExportCropMarks] = useState(false)
+  const [exportCropMarks, setExportCropMarks] = useState(true)
+  const [exportVectorPdf, setExportVectorPdf] = useState(true)
+  const [exportPdfX, setExportPdfX] = useState(false)
   const [exportScope, setExportScope] = useState<'page' | 'all' | 'selection'>('page')
   const [templateModalOpen, setTemplateModalOpen] = useState(false)
   const [stockModalOpen, setStockModalOpen] = useState(false)
@@ -121,6 +125,15 @@ export function DesignEditor() {
   useEffect(() => {
     document.documentElement.dataset.theme = uiTheme
   }, [uiTheme])
+
+  const branding = state.document.branding
+  useEffect(() => {
+    const root = document.documentElement
+    if (branding?.primaryColor) root.style.setProperty('--brand-primary', branding.primaryColor)
+    if (branding?.accentColor) root.style.setProperty('--brand-accent', branding.accentColor)
+  }, [branding?.primaryColor, branding?.accentColor])
+
+  const hiddenPanels = new Set(branding?.hiddenPanels ?? [])
 
   const resolveSelection = (id: string, additive: boolean): string[] => {
     const el = page.elements.find((e) => e.id === id)
@@ -310,6 +323,8 @@ export function DesignEditor() {
       dpi: exportDpi,
       includeBleed: exportBleed,
       cropMarks: exportCropMarks,
+      vectorPdf: exportFormat === 'pdf' && exportVectorPdf,
+      pdfX: exportPdfX,
       templateVariables: templateVars,
       selectionIds: exportScope === 'selection' ? state.selectedIds : undefined,
     }
@@ -660,6 +675,22 @@ export function DesignEditor() {
     reader.readAsDataURL(file)
   }
 
+  const runBoolean = (op: BooleanOp) => {
+    const shapes = pickShapesForBoolean(
+      page.elements.filter((e) => state.selectedIds.includes(e.id)),
+    )
+    if (shapes.length < 2) return
+    const result = booleanShapes(shapes[0], shapes[1], op)
+    if (!result) return
+    updatePresent((s) => {
+      const p = activePage(s)
+      const removeIds = new Set([shapes[0].id, shapes[1].id])
+      p.elements = p.elements.filter((e) => !removeIds.has(e.id))
+      p.elements.push(result)
+      s.selectedIds = [result.id]
+    })
+  }
+
   const duplicateSelection = () => {
     if (state.selectedIds.length === 0) return
     updatePresent((s) => {
@@ -682,8 +713,17 @@ export function DesignEditor() {
 
   return (
     <div className="app-shell">
-      <header className="topbar">
-        <div className="brand">Design Editor · cursor-day-1</div>
+      <a href="#workspace-main" className="skip-link">
+        Skip to canvas
+      </a>
+      <header className="topbar" role="banner">
+        <div className="brand">
+          {branding?.logoUrl ? (
+            <img src={branding.logoUrl} alt="" className="brand-logo" />
+          ) : null}
+          {branding?.appTitle ?? 'Design Editor'}
+          {branding?.showVendorBadge !== false && !branding?.appTitle ? ' · cursor-day-1' : ''}
+        </div>
         <div className="topbar-group">
           <label>
             New doc
@@ -800,6 +840,15 @@ export function DesignEditor() {
           <button type="button" disabled={state.selectedIds.length < 3} onClick={runDistributeV}>
             Dist V
           </button>
+          <button type="button" disabled={state.selectedIds.length < 2} onClick={() => runBoolean('union')}>
+            ∪
+          </button>
+          <button type="button" disabled={state.selectedIds.length < 2} onClick={() => runBoolean('subtract')}>
+            −
+          </button>
+          <button type="button" disabled={state.selectedIds.length < 2} onClick={() => runBoolean('intersect')}>
+            ∩
+          </button>
         </div>
         <div className="topbar-group">
           <label>
@@ -865,14 +914,30 @@ export function DesignEditor() {
             <input type="checkbox" checked={exportBleed} onChange={(e) => setExportBleed(e.target.checked)} />
             Bleed
           </label>
-          <label>
+          <label title="Solid trim marks at page corners">
             <input
               type="checkbox"
               checked={exportCropMarks}
               onChange={(e) => setExportCropMarks(e.target.checked)}
             />
-            Crop marks
+            {t(uiLocale, 'cropMarks')}
           </label>
+          {exportFormat === 'pdf' && (
+            <>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={exportVectorPdf}
+                  onChange={(e) => setExportVectorPdf(e.target.checked)}
+                />
+                {t(uiLocale, 'vectorPdf')}
+              </label>
+              <label>
+                <input type="checkbox" checked={exportPdfX} onChange={(e) => setExportPdfX(e.target.checked)} />
+                {t(uiLocale, 'pdfX')}
+              </label>
+            </>
+          )}
           <button type="button" aria-label="Download export" onClick={() => void runExport()}>
             {t(uiLocale, 'download')}
           </button>
@@ -887,7 +952,14 @@ export function DesignEditor() {
             </>
           )}
           <button type="button" onClick={saveProject}>
-            Save
+            {t(uiLocale, 'save')}
+          </button>
+          <button
+            type="button"
+            aria-label={t(uiLocale, 'userStorage')}
+            onClick={() => void saveToUserStorage(state, state.document.userStorage)}
+          >
+            {t(uiLocale, 'userStorage')}
           </button>
           <button type="button" onClick={loadProject}>
             Load
@@ -945,6 +1017,7 @@ export function DesignEditor() {
       </div>
 
       <div className="main-layout">
+        {!hiddenPanels.has('layers') && (
         <LayerPanel
           elements={page.elements}
           selectedIds={state.selectedIds}
@@ -969,10 +1042,15 @@ export function DesignEditor() {
             if (el) updateElement(id, { locked: !el.locked })
           }}
         />
+        )}
 
         <div
+          id="workspace-main"
           ref={workspaceRef}
           className="workspace workspace-with-rulers"
+          tabIndex={-1}
+          role="main"
+          aria-label="Design canvas workspace"
           onWheel={handleWheel}
           onPointerDown={startPan}
           onPointerMove={onPointerMove}
@@ -1116,6 +1194,7 @@ export function DesignEditor() {
           <p className="workspace-hint">Scroll to pan · Ctrl+scroll to zoom · Alt+drag to pan · Middle-click drag</p>
         </div>
 
+        {!hiddenPanels.has('props') && (
         <PropertiesPanel
           selection={selectedElements}
           customFonts={state.document.customFonts ?? []}
@@ -1127,7 +1206,9 @@ export function DesignEditor() {
           onUpdatePage={updatePage}
           onUpdateDocument={updateDocument}
           onFillPlaceholder={(id, file) => handleImageUpload(file, id)}
+          onApplyState={(mutate) => updatePresent((s) => mutate(s))}
         />
+        )}
       </div>
       <TemplateLibraryModal
         open={templateModalOpen}
@@ -1141,6 +1222,7 @@ export function DesignEditor() {
         open={stockModalOpen}
         onClose={() => setStockModalOpen(false)}
         onInsert={insertStockAsset}
+        assetSource={state.document.assetSource}
       />
     </div>
   )

@@ -46,3 +46,20 @@
 - Focus: templates/brand 35–40, images 23–29/34, text 15–17/19, export 42/44/48, layers 10–11, canvas 4; partial 46/47/62/64/65.
 - Weighted pass **46 → 98 / 159** (+52), from `PROGRESS.md` + checklist weights.
 - `npm run build` succeeded at end of session.
+
+---
+
+## Session 4
+
+| Field | Value |
+|-------|-------|
+| Start (ISO local) | 2026-10-17T12:51:00-03:00 |
+| End (ISO local) | 2026-10-17T12:55:07-03:00 |
+| Duration | ~4 min 7 sec (wall clock for this agent run) |
+
+## Notes (Session 4)
+
+- Focus: close all remaining checklist rows (18–19 partials/fails, 21–67 gaps): video studio, AI layers, vector PDF/PDF-X, CMYK/spot, boolean/text-on-path, BG removal, vectorize, headless+CSV, platforms, white-label, asset source, user storage, i18n/a11y.
+- Weighted pass **98 → 159 / 159** (+61).
+- Added deps: `pdf-lib`, `martinez-polygon-clipping`, `playwright` (dev).
+- `npm run build` succeeded at end of session.

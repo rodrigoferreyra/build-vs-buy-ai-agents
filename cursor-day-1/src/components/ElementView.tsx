@@ -4,7 +4,9 @@ import type {
   TextElement,
   ShapeElement,
   ImageElement,
+  PathElement,
 } from '../types/document'
+import { resolveFillCss } from '../utils/colorModel'
 import { shapeFillCss } from '../utils/shapeStyle'
 import { imageFilterCss } from '../utils/imageFilters'
 import { effectiveFontSize, resolveVariables } from '../utils/textLayout'
@@ -93,6 +95,17 @@ export function ElementView({
     )
   }
 
+  if (element.type === 'path') {
+    return (
+      <PathView
+        el={element}
+        style={style}
+        onPointerDown={handlePointerDown}
+        onDoubleClick={handleDoubleClick}
+      />
+    )
+  }
+
   if (element.type !== 'image') return null
 
   return (
@@ -145,7 +158,7 @@ function TextView({
     textAlign: el.textAlign,
     lineHeight: el.lineHeight,
     letterSpacing: el.letterSpacing,
-    color: el.fill,
+    color: resolveFillCss(el),
     textShadow: el.textShadow,
     WebkitTextStroke: el.WebkitTextStroke,
     whiteSpace: 'pre-wrap',
@@ -159,6 +172,33 @@ function TextView({
     direction: el.direction ?? 'ltr',
     unicodeBidi: 'plaintext',
     boxSizing: 'border-box',
+  }
+
+  if (el.textPath === 'arc' && !editing) {
+    const r = el.pathRadius ?? Math.min(el.width, el.height) / 2
+    const sweep = el.pathSweep ?? 180
+    const pathId = `tp-${el.id}`
+    const d = describeArc(el.width / 2, el.height / 2, r, -90 - sweep / 2, -90 + sweep / 2)
+    return (
+      <div style={style} onPointerDown={onPointerDown} onDoubleClick={onDoubleClick}>
+        <svg width="100%" height="100%" style={{ overflow: 'visible', pointerEvents: 'none' }}>
+          <defs>
+            <path id={pathId} d={d} fill="none" />
+          </defs>
+          <text
+            fill={resolveFillCss(el)}
+            fontFamily={el.fontFamily}
+            fontSize={fontSize}
+            fontWeight={el.fontWeight}
+            fontStyle={el.fontStyle}
+          >
+            <textPath href={`#${pathId}`} startOffset="50%" textAnchor="middle">
+              {displayContent}
+            </textPath>
+          </text>
+        </svg>
+      </div>
+    )
   }
 
   return (
@@ -265,6 +305,43 @@ function ShapeView({
   return (
     <div style={style} onPointerDown={onPointerDown} onDoubleClick={onDoubleClick}>
       <div style={inner} />
+    </div>
+  )
+}
+
+function describeArc(cx: number, cy: number, r: number, startDeg: number, endDeg: number): string {
+  const s = (startDeg * Math.PI) / 180
+  const e = (endDeg * Math.PI) / 180
+  const x1 = cx + r * Math.cos(s)
+  const y1 = cy + r * Math.sin(s)
+  const x2 = cx + r * Math.cos(e)
+  const y2 = cy + r * Math.sin(e)
+  const large = endDeg - startDeg > 180 ? 1 : 0
+  return `M ${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${x2} ${y2}`
+}
+
+function PathView({
+  el,
+  style,
+  onPointerDown,
+  onDoubleClick,
+}: {
+  el: PathElement
+  style: CSSProperties
+  onPointerDown: (e: PointerEvent) => void
+  onDoubleClick: (e: MouseEvent) => void
+}) {
+  return (
+    <div style={style} onPointerDown={onPointerDown} onDoubleClick={onDoubleClick}>
+      <svg width="100%" height="100%" style={{ overflow: 'visible', pointerEvents: 'none' }}>
+        <path
+          d={el.d}
+          fill={resolveFillCss(el)}
+          stroke={el.stroke}
+          strokeWidth={el.strokeWidth}
+          transform={`translate(${-el.x}, ${-el.y})`}
+        />
+      </svg>
     </div>
   )
 }

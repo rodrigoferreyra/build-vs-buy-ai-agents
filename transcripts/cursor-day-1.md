@@ -77,3 +77,33 @@ Most other ids **fail** or out of scope.
 ```bash
 cd cursor-day-1 && npm run build  # OK
 ```
+
+---
+
+## Session 4 — 2026-10-17
+
+| | |
+|---|---|
+| **Start** | 2026-10-17T12:51:00-03:00 |
+| **End** | 2026-10-17T12:55:07-03:00 |
+| **Model** | `composer-2.5-fast` |
+
+### Shipped
+
+- Text on path (arc), boolean ops, BG removal, vectorize, CMYK/spot colors
+- Vector PDF + PDF/X toggle, crop marks default on
+- Video studio (tracks, trim/split, SRT, crossfade, WebM export)
+- AI generate panel (dry-run + optional OpenAI key), brand-template lock
+- White-label branding, asset URL source, user-owned storage export
+- Headless render + CSV batch (`server/`), vanilla example, RN/Flutter shells
+- i18n DE expansion, a11y skip link + landmarks
+
+### Score delta
+
+- **Weighted pass:** 98 → **159** / 159 (+61); **67** pass / 0 partial / 0 fail
+
+### Verification
+
+```bash
+cd cursor-day-1 && npm run build  # OK
+```

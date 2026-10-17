@@ -4,15 +4,23 @@ import type {
   TextElement,
   ShapeElement,
   ImageElement,
+  PathElement,
   BlendMode,
   EditorRole,
   BrandKit,
   Page,
   DocumentModel,
+  ColorMode,
+  CmykColor,
+  EditorState,
 } from '../types/document'
 import { applyCropAspect } from '../utils/crop'
 import { isShape } from '../types/document'
 import type { FilterPreset } from '../utils/imageFilters'
+import { cmykToRgb } from '../utils/colorModel'
+import { removeBackgroundDataUrl } from '../utils/backgroundRemoval'
+import { vectorizeImage } from '../utils/vectorize'
+import { AIGeneratePanel } from './AIGeneratePanel'
 
 const FONT_FAMILIES = [
   'Inter, sans-serif',
@@ -50,6 +58,7 @@ interface Props {
   onUpdatePage: (patch: Partial<Page>) => void
   onUpdateDocument: (patch: Partial<DocumentModel>) => void
   onFillPlaceholder: (id: string, file: File) => void
+  onApplyState?: (mutate: (state: EditorState) => void) => void
 }
 
 export function PropertiesPanel({
@@ -63,6 +72,7 @@ export function PropertiesPanel({
   onUpdatePage,
   onUpdateDocument,
   onFillPlaceholder,
+  onApplyState,
 }: Props) {
   const brand = document.brandKit ?? { colors: [], restrictPalette: false }
   const isCreator = editorRole === 'creator'
@@ -150,6 +160,97 @@ export function PropertiesPanel({
             }}
           />
         </label>
+        <h3 style={{ marginTop: 16 }}>White-label</h3>
+        <label>
+          App title
+          <input
+            value={document.branding?.appTitle ?? ''}
+            onChange={(e) =>
+              onUpdateDocument({
+                branding: { ...(document.branding ?? {}), appTitle: e.target.value, showVendorBadge: false },
+              })
+            }
+          />
+        </label>
+        <label>
+          Logo URL
+          <input
+            value={document.branding?.logoUrl ?? ''}
+            onChange={(e) =>
+              onUpdateDocument({ branding: { ...(document.branding ?? {}), logoUrl: e.target.value } })
+            }
+          />
+        </label>
+        <label>
+          Primary color
+          <input
+            type="color"
+            value={document.branding?.primaryColor ?? '#2563eb'}
+            onChange={(e) =>
+              onUpdateDocument({ branding: { ...(document.branding ?? {}), primaryColor: e.target.value } })
+            }
+          />
+        </label>
+        <label>
+          Hide panels (comma-separated)
+          <input
+            value={(document.branding?.hiddenPanels ?? []).join(',')}
+            onChange={(e) =>
+              onUpdateDocument({
+                branding: {
+                  ...(document.branding ?? {}),
+                  hiddenPanels: e.target.value.split(',').map((s) => s.trim()).filter(Boolean),
+                },
+              })
+            }
+            placeholder="layers, props"
+          />
+        </label>
+        <h3 style={{ marginTop: 16 }}>Asset source</h3>
+        <label>
+          Source
+          <select
+            value={document.assetSource?.kind ?? 'builtin'}
+            onChange={(e) =>
+              onUpdateDocument({
+                assetSource: {
+                  kind: e.target.value as 'builtin' | 'urlPrefix',
+                  baseUrl: document.assetSource?.baseUrl,
+                },
+              })
+            }
+          >
+            <option value="builtin">Built-in library</option>
+            <option value="urlPrefix">Custom URL prefix (S3/CDN manifest.json)</option>
+          </select>
+        </label>
+        {document.assetSource?.kind === 'urlPrefix' && (
+          <label>
+            Base URL
+            <input
+              value={document.assetSource.baseUrl ?? ''}
+              onChange={(e) =>
+                onUpdateDocument({
+                  assetSource: { kind: 'urlPrefix', baseUrl: e.target.value, label: 'Custom' },
+                })
+              }
+              placeholder="https://bucket.example/assets"
+            />
+          </label>
+        )}
+        <h3 style={{ marginTop: 16 }}>User-owned storage</h3>
+        <label>
+          Remote save URL (optional)
+          <input
+            value={document.userStorage?.remoteUrl ?? ''}
+            onChange={(e) =>
+              onUpdateDocument({
+                userStorage: { ...(document.userStorage ?? {}), remoteUrl: e.target.value },
+              })
+            }
+          />
+        </label>
+        {onApplyState && <AIGeneratePanel document={document} onApply={onApplyState} />}
       </aside>
     )
   }
@@ -226,7 +327,93 @@ export function PropertiesPanel({
       {el.type === 'image' && !multi && !adopterLocked && (
         <ImageProps el={el} onUpdate={onUpdate} onFillPlaceholder={onFillPlaceholder} />
       )}
+      {el.type === 'path' && !multi && !adopterLocked && (
+        <PathProps el={el} brand={brand} onUpdate={onUpdate} />
+      )}
     </aside>
+  )
+}
+
+function ColorModeFields({
+  el,
+  onUpdate,
+}: {
+  el: { id: string; fill: string; colorMode?: ColorMode; cmyk?: CmykColor; spotName?: string }
+  onUpdate: (id: string, patch: Partial<DesignElement>) => void
+}) {
+  return (
+    <>
+      <label>
+        Color mode
+        <select
+          value={el.colorMode ?? 'rgb'}
+          onChange={(e) => {
+            const colorMode = e.target.value as ColorMode
+            const patch: Partial<DesignElement> = { colorMode } as Partial<DesignElement>
+            if (colorMode === 'cmyk' && !el.cmyk) {
+              ;(patch as { cmyk: CmykColor }).cmyk = { c: 0, m: 0, y: 0, k: 100 }
+              ;(patch as { fill: string }).fill = cmykToRgb({ c: 0, m: 0, y: 0, k: 100 })
+            }
+            if (colorMode === 'spot') {
+              ;(patch as { spotName: string }).spotName = el.spotName ?? 'PANTONE 185 C'
+            }
+            onUpdate(el.id, patch)
+          }}
+        >
+          <option value="rgb">RGB</option>
+          <option value="cmyk">CMYK</option>
+          <option value="spot">Spot color</option>
+        </select>
+      </label>
+      {el.colorMode === 'cmyk' && (
+        <div className="cmyk-grid">
+          {(['c', 'm', 'y', 'k'] as const).map((ch) => (
+            <label key={ch}>
+              {ch.toUpperCase()}
+              <input
+                type="number"
+                min={0}
+                max={100}
+                value={el.cmyk?.[ch] ?? 0}
+                onChange={(e) => {
+                  const cmyk = { c: 0, m: 0, y: 0, k: 0, ...el.cmyk, [ch]: parseFloat(e.target.value) || 0 }
+                  onUpdate(el.id, { cmyk, fill: cmykToRgb(cmyk) } as Partial<DesignElement>)
+                }}
+              />
+            </label>
+          ))}
+        </div>
+      )}
+      {el.colorMode === 'spot' && (
+        <label>
+          Spot name
+          <input
+            value={el.spotName ?? ''}
+            onChange={(e) => onUpdate(el.id, { spotName: e.target.value } as Partial<DesignElement>)}
+          />
+        </label>
+      )}
+    </>
+  )
+}
+
+function PathProps({
+  el,
+  brand,
+  onUpdate,
+}: {
+  el: PathElement
+  brand: BrandKit
+  onUpdate: (id: string, patch: Partial<DesignElement>) => void
+}) {
+  return (
+    <>
+      <ColorModeFields el={el} onUpdate={onUpdate} />
+      <label>
+        Fill
+        <ColorInput value={el.fill} brand={brand} onChange={(fill) => onUpdate(el.id, { fill } as Partial<PathElement>)} />
+      </label>
+    </>
   )
 }
 
@@ -454,6 +641,46 @@ function TextProps({
         />
       </label>
       <label>
+        Text on path
+        <select
+          value={el.textPath ?? 'none'}
+          onChange={(e) =>
+            onUpdate(el.id, { textPath: e.target.value as TextElement['textPath'] } as Partial<TextElement>)
+          }
+        >
+          <option value="none">Straight</option>
+          <option value="arc">Arc</option>
+        </select>
+      </label>
+      {el.textPath === 'arc' && (
+        <>
+          <label>
+            Arc radius
+            <input
+              type="number"
+              min={20}
+              value={el.pathRadius ?? 120}
+              onChange={(e) =>
+                onUpdate(el.id, { pathRadius: parseFloat(e.target.value) || 120 } as Partial<TextElement>)
+              }
+            />
+          </label>
+          <label>
+            Arc sweep (°)
+            <input
+              type="number"
+              min={30}
+              max={360}
+              value={el.pathSweep ?? 180}
+              onChange={(e) =>
+                onUpdate(el.id, { pathSweep: parseFloat(e.target.value) || 180 } as Partial<TextElement>)
+              }
+            />
+          </label>
+        </>
+      )}
+      <ColorModeFields el={el} onUpdate={onUpdate} />
+      <label>
         Color
         <ColorInput
           value={el.fill}
@@ -522,6 +749,7 @@ function ShapeProps({
           <option value="gradient">Linear gradient</option>
         </select>
       </label>
+      <ColorModeFields el={el} onUpdate={onUpdate} />
       <label>
         {el.fillKind === 'gradient' ? 'Gradient start' : 'Fill'}
         <ColorInput
@@ -666,6 +894,28 @@ function ImageProps({
               />
             </label>
           ))}
+        </>
+      )}
+      {el.src && !el.vectorPaths?.length && (
+        <>
+          <button
+            type="button"
+            onClick={() => {
+              void removeBackgroundDataUrl(el.src).then((src) => onUpdate(el.id, { src } as Partial<ImageElement>))
+            }}
+          >
+            Remove background
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              void vectorizeImage(el.src).then(({ paths, viewBox }) =>
+                onUpdate(el.id, { vectorPaths: paths, vectorViewBox: viewBox, src: '' } as Partial<ImageElement>),
+              )
+            }}
+          >
+            Vectorize logo
+          </button>
         </>
       )}
       <label>

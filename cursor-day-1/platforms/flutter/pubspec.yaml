@@ -1,0 +1,15 @@
+name: cursor_day1_shell
+description: Thin Flutter shell for cursor-day-1 design JSON
+publish_to: none
+version: 0.1.0
+
+environment:
+  sdk: '>=3.5.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  url_launcher: ^6.3.1
+
+flutter:
+  uses-material-design: true

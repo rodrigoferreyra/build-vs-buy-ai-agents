@@ -7,11 +7,14 @@ import {
   type TextElement,
   type ShapeElement,
   type ImageElement,
+  type PathElement,
   type DocumentModel,
 } from '../types/document'
 import { applyShapeFill } from './shapeStyle'
 import { applyCanvasFilter } from './imageFilters'
 import { effectiveFontSize, resolveVariables } from './textLayout'
+import { resolveFillCss } from './colorModel'
+import { downloadVectorPdf } from './exportPdfVector'
 
 export type ExportFormat = 'png' | 'jpeg' | 'webp' | 'pdf'
 
@@ -21,9 +24,14 @@ export interface ExportOptions {
   dpi?: number
   includeBleed?: boolean
   cropMarks?: boolean
+  /** Vector text + embedded fonts (pdf-lib) */
+  vectorPdf?: boolean
+  /** PDF/X-4 best-effort metadata */
+  pdfX?: boolean
   /** Render only these element ids (page coords). */
   selectionIds?: string[]
   templateVariables?: Record<string, string>
+  transparentBackground?: boolean
 }
 
 function loadImage(src: string): Promise<HTMLImageElement> {
@@ -65,7 +73,7 @@ function drawText(ctx: CanvasRenderingContext2D, el: TextElement, vars: Record<s
     ctx.fillRect(0, yOff, el.width, blockH)
   }
 
-  ctx.fillStyle = el.fill
+  ctx.fillStyle = resolveFillCss(el)
   ctx.font = `${el.fontStyle} ${el.fontWeight} ${fontSize}px ${el.fontFamily}`
   ctx.textAlign = el.textAlign
   ctx.textBaseline = 'top'
@@ -81,13 +89,56 @@ function drawText(ctx: CanvasRenderingContext2D, el: TextElement, vars: Record<s
     }
   }
 
-  let y = yOff
-  for (const line of lines) {
-    let x = 0
-    if (el.textAlign === 'center') x = el.width / 2
-    if (el.textAlign === 'right') x = el.width
-    ctx.fillText(line, x, y)
-    y += lh + para
+  if (el.textPath === 'arc') {
+    const r = el.pathRadius ?? Math.min(el.width, el.height) / 2
+    const sweep = ((el.pathSweep ?? 180) * Math.PI) / 180
+    const cx = el.width / 2
+    const cy = el.height / 2
+    const text = lines.join(' ')
+    const chars = text.split('')
+    const arcLen = r * sweep
+    const charW = arcLen / Math.max(1, chars.length)
+    let angle = -Math.PI / 2 - sweep / 2
+    for (const ch of chars) {
+      const a = angle + charW / r / 2
+      const px = cx + Math.cos(a) * r
+      const py = cy + Math.sin(a) * r
+      ctx.save()
+      ctx.translate(px, py)
+      ctx.rotate(a + Math.PI / 2)
+      ctx.fillText(ch, 0, 0)
+      ctx.restore()
+      angle += charW / r
+    }
+  } else {
+    let y = yOff
+    for (const line of lines) {
+      let x = 0
+      if (el.textAlign === 'center') x = el.width / 2
+      if (el.textAlign === 'right') x = el.width
+      ctx.fillText(line, x, y)
+      y += lh + para
+    }
+  }
+  ctx.restore()
+}
+
+function drawPath(ctx: CanvasRenderingContext2D, el: PathElement): void {
+  ctx.save()
+  ctx.globalAlpha = el.opacity
+  ctx.globalCompositeOperation = blendToComposite(el.blendMode)
+  if (el.rotation) {
+    ctx.translate(el.x + el.width / 2, el.y + el.height / 2)
+    ctx.rotate((el.rotation * Math.PI) / 180)
+    ctx.translate(-(el.x + el.width / 2), -(el.y + el.height / 2))
+  }
+  const path = new Path2D(el.d)
+  ctx.fillStyle = resolveFillCss(el)
+  ctx.fill(path)
+  if (el.strokeWidth > 0) {
+    ctx.strokeStyle = el.stroke
+    ctx.lineWidth = el.strokeWidth
+    ctx.stroke(path)
   }
   ctx.restore()
 }
@@ -251,6 +302,9 @@ async function drawElement(ctx: CanvasRenderingContext2D, el: DesignElement, var
     case 'polygon':
       drawShape(ctx, el)
       break
+    case 'path':
+      drawPath(ctx, el)
+      break
     case 'image':
       await drawImageEl(ctx, el)
       break
@@ -265,6 +319,7 @@ export async function renderPageToCanvas(
     cropMarks?: boolean
     selectionIds?: string[]
     templateVariables?: Record<string, string>
+    transparentBackground?: boolean
   } = {},
 ): Promise<HTMLCanvasElement> {
   const { width, height } = pageSizePx(page)
@@ -275,8 +330,10 @@ export async function renderPageToCanvas(
   const ctx = canvas.getContext('2d')!
   ctx.scale(scale, scale)
   ctx.translate(bleed, bleed)
-  ctx.fillStyle = page.background
-  ctx.fillRect(0, 0, width, height)
+  if (!opts.transparentBackground) {
+    ctx.fillStyle = page.background
+    ctx.fillRect(0, 0, width, height)
+  }
 
   if (bleed > 0) {
     ctx.save()
@@ -352,6 +409,23 @@ export async function exportPage(page: Page, options: ExportOptions): Promise<vo
   const base = page.name.replace(/\s+/g, '-').toLowerCase()
   const format = options.format
 
+  if (format === 'pdf' && options.vectorPdf) {
+    await downloadVectorPdf(
+      { id: 'export', name: page.name, pages: [page], activePageIndex: 0, customFonts: [] },
+      [0],
+      {
+        dpi: options.dpi,
+        includeBleed: options.includeBleed,
+        cropMarks: options.cropMarks,
+        pdfX: options.pdfX,
+        selectionIds: options.selectionIds,
+        templateVariables: options.templateVariables,
+      },
+      `${base}.pdf`,
+    )
+    return
+  }
+
   if (format === 'pdf') {
     const { width, height } = pageSizePx(page)
     const bleed = options.includeBleed ? bleedPx(page) : 0
@@ -390,6 +464,18 @@ export async function exportPages(doc: DocumentModel, pageIndices: number[], opt
     const page = doc.pages[pageIndices[0]]
     return exportPage(page, options)
   }
+  if (options.format === 'pdf' && options.vectorPdf) {
+    await downloadVectorPdf(doc, pageIndices, {
+      dpi: options.dpi,
+      includeBleed: options.includeBleed,
+      cropMarks: options.cropMarks,
+      pdfX: options.pdfX,
+      selectionIds: options.selectionIds,
+      templateVariables: options.templateVariables ?? doc.templateVariables,
+    }, `${doc.name.replace(/\s+/g, '-').toLowerCase()}-export.pdf`)
+    return
+  }
+
   if (options.format === 'pdf') {
     const scale = dpiToScale(options.dpi ?? 96)
     let pdf: jsPDF | null = null
