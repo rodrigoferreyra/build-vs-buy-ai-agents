@@ -1,0 +1,23 @@
+html,
+body,
+#root {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.license-banner {
+  font-family: system-ui, sans-serif;
+  max-width: 40rem;
+  margin: 4rem auto;
+  padding: 1.5rem;
+  line-height: 1.5;
+}
+
+.license-banner code {
+  background: #f2f2f2;
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+}

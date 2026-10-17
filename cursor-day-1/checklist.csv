@@ -1,0 +1,68 @@
+id,area,requirement,test_step,weight,cesdk_support,platforms,notes
+1,Canvas and documents,"Open a blank design at a chosen size in px, mm or in",Create a 1080x1080 px and an A6 mm document,3,yes,"web, iOS, Android, server",
+2,Canvas and documents,Multiple pages in one document,"Add a second page, reorder, delete",2,yes,all,
+3,Canvas and documents,Zoom and pan with fit-to-screen,"Zoom to 400%, fit to page",2,yes,all,
+4,Canvas and documents,"Rulers, guides and snapping",Drag an element; it snaps to page center and to another element,2,yes,web,snapping documented; rulers verify
+5,Canvas and documents,Save and reopen a design without loss,"Save, reload, compare",3,yes,all,.scene format
+6,Canvas and documents,Undo and redo across every operation,"Make 10 edits, undo all, redo all",3,yes,all,
+7,Layers and selection,"Layer list with reorder, hide, lock","Reorder three layers, hide one, lock one",3,yes,all,
+8,Layers and selection,Group and ungroup,"Group two shapes, move as one, ungroup",2,yes,all,
+9,Layers and selection,Multi-select and align or distribute,"Select three elements, align left, distribute horizontally",2,yes,all,
+10,Layers and selection,Opacity and blend modes per layer,Set 50% opacity and a multiply blend,2,yes,all,blend mode list: verify
+11,Layers and selection,Duplicate and copy-paste between pages,Copy an element to page 2,2,yes,all,
+12,Text,Add text and edit inline on canvas,"Double-click, type, click away",3,yes,all,
+13,Text,"Font family, size, weight, style",Change all four on one text block,3,yes,all,
+14,Text,"Custom fonts (TTF, OTF, WOFF, WOFF2)",Upload a brand font and apply it,3,yes,all,
+15,Text,"Line height, letter spacing, paragraph spacing",Set each and see the change,2,yes,all,
+16,Text,Alignment and vertical alignment in a box,Center text in a fixed-size box,2,yes,all,
+17,Text,Auto-fit text to a fixed box,Type a long name into a fixed-width field; it shrinks or wraps,3,yes,all,needed for personalization
+18,Text,Text on a path or curved text,Bend a headline on an arc,1,verify,web,common in print; confirm
+19,Text,"Text effects: outline, shadow, background",Add a stroke and a drop shadow to text,2,partial,all,stroke documented; shadow verify
+20,Text,Multilingual and RTL text,Paste Arabic and see correct shaping,2,verify,all,
+21,Images,"Upload an image (PNG, JPG, WebP, SVG, GIF)",Upload one of each,3,yes,all,
+22,Images,"Crop, rotate, flip, resize","Crop to 4:5, rotate 15 degrees, flip",3,yes,all,
+23,Images,"Adjustments: brightness, contrast, saturation, exposure, temperature",Adjust each with a slider,2,yes,all,
+24,Images,Filters and LUTs,Apply a preset filter,2,yes,all,
+25,Images,Background removal in the browser,Remove the background of a product photo without a server call,3,yes,web,@imgly/background-removal
+26,Images,Image placeholder that accepts a fixed ratio,Drop a portrait image into a landscape slot; it fills and crops,3,yes,all,
+27,Images,Vectorize a raster logo,Turn a PNG logo into vector paths,1,yes,web,vectorizer plugin
+28,Images,Stock image and sticker library,Search and insert from a built-in library,2,yes,all,
+29,Images,Image masks and frames (shape masks),Mask a photo to a circle,2,yes,all,
+30,Shapes and vectors,"Rectangles, ellipses, lines, polygons, stars",Add one of each,2,yes,all,
+31,Shapes and vectors,"Fill, stroke, corner radius",Set a 2 pt stroke and 12 px radius,2,yes,all,
+32,Shapes and vectors,"Boolean operations: union, subtract, intersect",Subtract a circle from a square,1,yes,"web, server",
+33,Shapes and vectors,Gradients,Apply a two-stop linear gradient,2,yes,all,
+34,Shapes and vectors,Import SVG and edit its parts,Import a logo SVG and recolor a path,2,partial,all,edit depth: verify
+35,Templates and brand,Create a template from a design,"Save as template, open as new design",3,yes,all,
+36,Templates and brand,Lock elements so adopters cannot move or delete them,Lock the logo; try to move it as adopter,3,yes,all,creator and adopter roles
+37,Templates and brand,Text and image variables filled at render time,Define {name}; fill from data,3,yes,all,
+38,Templates and brand,"Brand kit: fonts, colors, logos",Restrict the palette to three brand colors,3,yes,all,
+39,Templates and brand,Creator vs adopter UI (two roles),Open the same template in both roles,3,yes,all,
+40,Templates and brand,Template library with categories and search,Browse templates by category,2,yes,all,
+41,Export and print,"Export PNG, JPEG, WebP, PDF",Export the same design in all four,3,yes,all,WebP: verify
+42,Export and print,Export at a chosen resolution or DPI,Export at 300 DPI for print,3,yes,all,
+43,Export and print,CMYK colors and spot colors,Define a CMYK fill and a spot color,3,yes,all,
+44,Export and print,Bleed and margin settings,Set 3 mm bleed; see it in the export,3,yes,web,
+45,Export and print,PDF/X export,Export PDF/X-4,3,yes,web,"plugin docs: X-4 default, X-3 fallback"
+46,Export and print,Crop marks,Export with crop marks,2,verify,web,not documented
+47,Export and print,Embedded fonts and vector text in PDF,Open the PDF; text is selectable and font is embedded,3,verify,all,confirm in PR1 benchmark
+48,Export and print,Export only a selection or one page,Export page 2 alone,1,yes,all,
+49,Video,Timeline with trim and split,"Trim a clip, split it in two",3,yes,"web, iOS, Android",
+50,Video,Multiple video and audio tracks,Add a second clip and a music track,2,yes,"web, iOS, Android",
+51,Video,Text and stickers over video,Add animated text,2,yes,"web, iOS, Android",
+52,Video,Captions from a subtitle file,Load an SRT and style it,2,yes,web,React Native: verify
+53,Video,Transitions between clips,Add a crossfade,1,yes,"web, iOS, Android",
+54,Video,Export MP4 up to 4K with FPS control,Export 1080p 30 fps,3,yes,"web, iOS, Android",
+55,AI,Text-to-image inside the editor with your own model key,Generate an image with a brand prompt,2,yes,web,model list in capabilities
+56,AI,Edit an AI result as layers rather than regenerating,Move the generated headline without a new generation,2,yes,web,
+57,AI,AI generation limited to brand templates,Generate only inside a locked template,2,partial,web,"pattern, not a switch; verify"
+58,Platform and integration,"Runs in React, Vue, Angular, Svelte, plain JS",Mount in two frameworks,3,yes,web,
+59,Platform and integration,"iOS, Android, React Native, Flutter",Open the same design on one mobile platform,2,yes,mobile,
+60,Platform and integration,Headless server rendering in Node.js and Docker,Render a template from a script without the UI,3,yes,server,
+61,Platform and integration,Batch render from CSV,Render 100 variants from a sheet,3,yes,server,
+62,Platform and integration,"White-label: no vendor branding, full theming","Change colors, hide panels, add your logo",3,yes,all,
+63,Platform and integration,"Custom asset sources (your own stock, fonts, stickers)",Plug in an S3 bucket as an asset source,2,yes,all,
+64,Platform and integration,Localization of the UI,Switch the editor to German,2,yes,"web, iOS, Android",
+65,Platform and integration,Accessibility (WCAG AA),Navigate the editor with a keyboard and screen reader,1,yes,web,
+66,Platform and integration,Data stays on the client unless you choose otherwise,Confirm no design data leaves the browser during editing,3,yes,all,
+67,Platform and integration,Save and load designs to your own storage,Save a scene to your bucket and reopen it,3,yes,all,
