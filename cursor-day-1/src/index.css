@@ -1,0 +1,291 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: Inter, system-ui, sans-serif;
+  background: #0f172a;
+  color: #e2e8f0;
+}
+
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.topbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  align-items: center;
+  padding: 10px 14px;
+  background: #1e293b;
+  border-bottom: 1px solid #334155;
+}
+
+.brand {
+  font-weight: 700;
+  margin-right: 8px;
+}
+
+.topbar-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.topbar button,
+.file-btn {
+  background: #334155;
+  border: 1px solid #475569;
+  color: #f1f5f9;
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.topbar button:hover,
+.file-btn:hover {
+  background: #475569;
+}
+
+.topbar button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.topbar label {
+  display: flex;
+  flex-direction: column;
+  font-size: 11px;
+  gap: 2px;
+  color: #94a3b8;
+}
+
+.topbar select {
+  background: #0f172a;
+  color: #e2e8f0;
+  border: 1px solid #475569;
+  border-radius: 4px;
+  padding: 4px 6px;
+}
+
+.file-btn input {
+  display: none;
+}
+
+.zoom-label {
+  font-size: 12px;
+  color: #94a3b8;
+  min-width: 42px;
+}
+
+.page-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px 14px;
+  background: #172554;
+  border-bottom: 1px solid #334155;
+}
+
+.tab {
+  background: transparent;
+  border: 1px solid #475569;
+  color: #cbd5e1;
+  border-radius: 6px;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+
+.tab.active {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #fff;
+}
+
+.main-layout {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 240px 1fr 260px;
+  min-height: 0;
+}
+
+.panel {
+  background: #1e293b;
+  border-right: 1px solid #334155;
+  padding: 12px;
+  overflow: auto;
+}
+
+.props-panel {
+  border-right: none;
+  border-left: 1px solid #334155;
+}
+
+.panel h2 {
+  margin: 0 0 12px;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #94a3b8;
+}
+
+.layer-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.layer-item {
+  display: grid;
+  grid-template-columns: 24px 1fr auto;
+  gap: 6px;
+  align-items: center;
+  padding: 6px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  background: #0f172a;
+  border: 1px solid transparent;
+  font-size: 12px;
+}
+
+.layer-item.selected {
+  border-color: #2563eb;
+  background: #1e3a8a33;
+}
+
+.layer-type {
+  font-weight: 700;
+  color: #64748b;
+}
+
+.layer-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.layer-actions {
+  display: flex;
+  gap: 2px;
+}
+
+.layer-actions button {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 2px;
+  font-size: 12px;
+}
+
+.workspace {
+  position: relative;
+  overflow: hidden;
+  background: #0b1220;
+  background-image: radial-gradient(#334155 1px, transparent 1px);
+  background-size: 16px 16px;
+  cursor: default;
+}
+
+.page-stage {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.page-canvas {
+  position: relative;
+  overflow: hidden;
+}
+
+.page-meta {
+  margin-top: 8px;
+  font-size: 11px;
+  color: #64748b;
+}
+
+.workspace-hint {
+  position: absolute;
+  bottom: 8px;
+  left: 12px;
+  margin: 0;
+  font-size: 11px;
+  color: #64748b;
+}
+
+.guide {
+  position: absolute;
+  pointer-events: none;
+  background: #f472b6;
+  z-index: 10000;
+}
+
+.guide.v {
+  width: 1px;
+  top: 0;
+}
+
+.guide.h {
+  height: 1px;
+  left: 0;
+}
+
+.props-panel label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 10px;
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.props-panel input[type='number'],
+.props-panel select {
+  background: #0f172a;
+  border: 1px solid #475569;
+  color: #e2e8f0;
+  border-radius: 4px;
+  padding: 6px;
+}
+
+.props-panel input[type='range'] {
+  width: 100%;
+}
+
+.muted {
+  color: #64748b;
+  font-size: 13px;
+}
+
+.crop-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.crop-presets button {
+  background: #334155;
+  border: 1px solid #475569;
+  color: #f1f5f9;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 12px;
+  cursor: pointer;
+}
