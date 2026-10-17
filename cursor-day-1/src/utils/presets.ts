@@ -28,6 +28,9 @@ export function createPage(
     unit,
     background: '#ffffff',
     elements: [],
+    bleedMm: 0,
+    marginMm: 0,
+    guides: [],
   }
 }
 
@@ -38,5 +41,11 @@ export function createDocument(preset: SizePreset): DocumentModel {
     activePageIndex: 0,
     pages: [createPage(preset.width, preset.height, preset.unit, 'Page 1')],
     customFonts: [],
+    editorRole: 'creator',
+    brandKit: { colors: ['#2563eb', '#f97316', '#111827'], restrictPalette: false },
+    templateVariables: {},
+    isTemplate: false,
+    uiLocale: 'en',
+    uiTheme: 'dark',
   }
 }

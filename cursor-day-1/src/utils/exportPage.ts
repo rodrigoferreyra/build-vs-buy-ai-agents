@@ -1,15 +1,30 @@
 import { jsPDF } from 'jspdf'
 import {
+  bleedPx,
   pageSizePx,
   type DesignElement,
   type Page,
   type TextElement,
   type ShapeElement,
   type ImageElement,
+  type DocumentModel,
 } from '../types/document'
 import { applyShapeFill } from './shapeStyle'
+import { applyCanvasFilter } from './imageFilters'
+import { effectiveFontSize, resolveVariables } from './textLayout'
 
 export type ExportFormat = 'png' | 'jpeg' | 'webp' | 'pdf'
+
+export interface ExportOptions {
+  format: ExportFormat
+  /** Screen pixels per inch multiplier (96 base). 300 DPI → scale 300/96 */
+  dpi?: number
+  includeBleed?: boolean
+  cropMarks?: boolean
+  /** Render only these element ids (page coords). */
+  selectionIds?: string[]
+  templateVariables?: Record<string, string>
+}
 
 function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
@@ -21,15 +36,37 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   })
 }
 
-function drawText(ctx: CanvasRenderingContext2D, el: TextElement): void {
+function blendToComposite(mode: DesignElement['blendMode']): GlobalCompositeOperation {
+  if (!mode || mode === 'normal') return 'source-over'
+  return mode as GlobalCompositeOperation
+}
+
+function drawText(ctx: CanvasRenderingContext2D, el: TextElement, vars: Record<string, string>): void {
   ctx.save()
   ctx.globalAlpha = el.opacity
+  ctx.globalCompositeOperation = blendToComposite(el.blendMode)
   ctx.translate(el.x + el.width / 2, el.y + el.height / 2)
   ctx.rotate((el.rotation * Math.PI) / 180)
   ctx.translate(-el.width / 2, -el.height / 2)
 
+  const content = resolveVariables(el.content, vars)
+  const fontSize = effectiveFontSize({ ...el, content })
+  const lh = fontSize * el.lineHeight
+  const para = el.paragraphSpacing ?? 0
+  const lines = content.split('\n')
+  const blockH = lines.length * lh + Math.max(0, lines.length - 1) * para
+  let yOff = 0
+  const vAlign = el.verticalAlign ?? 'top'
+  if (vAlign === 'middle') yOff = (el.height - blockH) / 2
+  if (vAlign === 'bottom') yOff = el.height - blockH
+
+  if (el.textBackground) {
+    ctx.fillStyle = el.textBackground
+    ctx.fillRect(0, yOff, el.width, blockH)
+  }
+
   ctx.fillStyle = el.fill
-  ctx.font = `${el.fontStyle} ${el.fontWeight} ${el.fontSize}px ${el.fontFamily}`
+  ctx.font = `${el.fontStyle} ${el.fontWeight} ${fontSize}px ${el.fontFamily}`
   ctx.textAlign = el.textAlign
   ctx.textBaseline = 'top'
   ctx.direction = el.direction ?? 'ltr'
@@ -44,15 +81,13 @@ function drawText(ctx: CanvasRenderingContext2D, el: TextElement): void {
     }
   }
 
-  const lines = el.content.split('\n')
-  const lh = el.fontSize * el.lineHeight
-  let y = 0
+  let y = yOff
   for (const line of lines) {
     let x = 0
     if (el.textAlign === 'center') x = el.width / 2
     if (el.textAlign === 'right') x = el.width
     ctx.fillText(line, x, y)
-    y += lh
+    y += lh + para
   }
   ctx.restore()
 }
@@ -86,6 +121,7 @@ function polygonPath(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: n
 function drawShape(ctx: CanvasRenderingContext2D, el: ShapeElement): void {
   ctx.save()
   ctx.globalAlpha = el.opacity
+  ctx.globalCompositeOperation = blendToComposite(el.blendMode)
   ctx.translate(el.x + el.width / 2, el.y + el.height / 2)
   ctx.rotate((el.rotation * Math.PI) / 180)
   ctx.translate(-el.width / 2, -el.height / 2)
@@ -134,16 +170,65 @@ function drawShape(ctx: CanvasRenderingContext2D, el: ShapeElement): void {
   ctx.restore()
 }
 
+function applyImageMask(ctx: CanvasRenderingContext2D, el: ImageElement, w: number, h: number): void {
+  const mask = el.maskShape ?? 'none'
+  if (mask === 'none') return
+  ctx.beginPath()
+  if (mask === 'circle' || mask === 'ellipse') {
+    ctx.ellipse(w / 2, h / 2, w / 2, h / 2, 0, 0, Math.PI * 2)
+  } else {
+    ctx.rect(0, 0, w, h)
+  }
+  ctx.clip()
+}
+
+async function drawVectorImage(ctx: CanvasRenderingContext2D, el: ImageElement): Promise<void> {
+  if (!el.vectorPaths?.length) return
+  ctx.save()
+  ctx.globalAlpha = el.opacity
+  ctx.globalCompositeOperation = blendToComposite(el.blendMode)
+  ctx.translate(el.x + el.width / 2, el.y + el.height / 2)
+  ctx.rotate((el.rotation * Math.PI) / 180)
+  ctx.translate(-el.width / 2, -el.height / 2)
+  const vb = el.vectorViewBox?.split(/\s+/).map(Number) ?? [0, 0, 100, 100]
+  const sx = el.width / (vb[2] || 100)
+  const sy = el.height / (vb[3] || 100)
+  ctx.scale(sx, sy)
+  ctx.translate(-vb[0], -vb[1])
+  for (const p of el.vectorPaths) {
+    const path = new Path2D(p.d)
+    ctx.fillStyle = p.fill
+    ctx.fill(path)
+  }
+  ctx.restore()
+}
+
 async function drawImageEl(ctx: CanvasRenderingContext2D, el: ImageElement): Promise<void> {
+  if (el.vectorPaths?.length) {
+    await drawVectorImage(ctx, el)
+    return
+  }
+  if (el.isPlaceholder && !el.src) {
+    ctx.save()
+    ctx.globalAlpha = el.opacity
+    ctx.strokeStyle = '#94a3b8'
+    ctx.setLineDash([8, 6])
+    ctx.strokeRect(el.x, el.y, el.width, el.height)
+    ctx.restore()
+    return
+  }
   const img = await loadImage(el.src)
   ctx.save()
   ctx.globalAlpha = el.opacity
+  ctx.globalCompositeOperation = blendToComposite(el.blendMode)
   ctx.translate(el.x + el.width / 2, el.y + el.height / 2)
   ctx.rotate((el.rotation * Math.PI) / 180)
   const sx = el.flipX ? -1 : 1
   const sy = el.flipY ? -1 : 1
   ctx.scale(sx, sy)
   ctx.translate(-el.width / 2, -el.height / 2)
+  applyImageMask(ctx, el, el.width, el.height)
+  applyCanvasFilter(ctx, el)
 
   const sw = img.naturalWidth * el.cropW
   const sh = img.naturalHeight * el.cropH
@@ -153,11 +238,11 @@ async function drawImageEl(ctx: CanvasRenderingContext2D, el: ImageElement): Pro
   ctx.restore()
 }
 
-async function drawElement(ctx: CanvasRenderingContext2D, el: DesignElement): Promise<void> {
+async function drawElement(ctx: CanvasRenderingContext2D, el: DesignElement, vars: Record<string, string>): Promise<void> {
   if (!el.visible) return
   switch (el.type) {
     case 'text':
-      drawText(ctx, el)
+      drawText(ctx, el, vars)
       break
     case 'rect':
     case 'ellipse':
@@ -172,20 +257,76 @@ async function drawElement(ctx: CanvasRenderingContext2D, el: DesignElement): Pr
   }
 }
 
-export async function renderPageToCanvas(page: Page, scale = 1): Promise<HTMLCanvasElement> {
+export async function renderPageToCanvas(
+  page: Page,
+  scale = 1,
+  opts: {
+    includeBleed?: boolean
+    cropMarks?: boolean
+    selectionIds?: string[]
+    templateVariables?: Record<string, string>
+  } = {},
+): Promise<HTMLCanvasElement> {
   const { width, height } = pageSizePx(page)
+  const bleed = opts.includeBleed ? bleedPx(page) : 0
   const canvas = document.createElement('canvas')
-  canvas.width = Math.round(width * scale)
-  canvas.height = Math.round(height * scale)
+  canvas.width = Math.round((width + bleed * 2) * scale)
+  canvas.height = Math.round((height + bleed * 2) * scale)
   const ctx = canvas.getContext('2d')!
   ctx.scale(scale, scale)
+  ctx.translate(bleed, bleed)
   ctx.fillStyle = page.background
   ctx.fillRect(0, 0, width, height)
 
-  for (const el of page.elements) {
-    await drawElement(ctx, el)
+  if (bleed > 0) {
+    ctx.save()
+    ctx.strokeStyle = '#ef4444'
+    ctx.setLineDash([4, 4])
+    ctx.strokeRect(0, 0, width, height)
+    ctx.restore()
+  }
+  if (opts.cropMarks) {
+    drawCropMarks(ctx, 0, 0, width, height, 18)
+  }
+
+  const vars = opts.templateVariables ?? {}
+  let elements = page.elements
+  if (opts.selectionIds?.length) {
+    elements = elements.filter((e) => opts.selectionIds!.includes(e.id))
+  }
+
+  for (const el of elements) {
+    await drawElement(ctx, el, vars)
   }
   return canvas
+}
+
+function drawCropMarks(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  len: number,
+): void {
+  ctx.save()
+  ctx.strokeStyle = '#111827'
+  ctx.lineWidth = 1
+  ctx.setLineDash([])
+  const corners: [number, number, number, number][] = [
+    [x, y, 1, 1],
+    [x + w, y, -1, 1],
+    [x, y + h, 1, -1],
+    [x + w, y + h, -1, -1],
+  ]
+  for (const [cx, cy, sx, sy] of corners) {
+    ctx.beginPath()
+    ctx.moveTo(cx, cy + sy * len)
+    ctx.lineTo(cx, cy)
+    ctx.lineTo(cx + sx * len, cy)
+    ctx.stroke()
+  }
+  ctx.restore()
 }
 
 function downloadBlob(blob: Blob, filename: string): void {
@@ -196,14 +337,26 @@ function downloadBlob(blob: Blob, filename: string): void {
   URL.revokeObjectURL(a.href)
 }
 
-export async function exportPage(page: Page, format: ExportFormat, scale = 1): Promise<void> {
-  const canvas = await renderPageToCanvas(page, scale)
+export function dpiToScale(dpi: number): number {
+  return dpi / 96
+}
+
+export async function exportPage(page: Page, options: ExportOptions): Promise<void> {
+  const scale = dpiToScale(options.dpi ?? 96)
+  const canvas = await renderPageToCanvas(page, scale, {
+    includeBleed: options.includeBleed,
+    cropMarks: options.cropMarks,
+    selectionIds: options.selectionIds,
+    templateVariables: options.templateVariables,
+  })
   const base = page.name.replace(/\s+/g, '-').toLowerCase()
+  const format = options.format
 
   if (format === 'pdf') {
     const { width, height } = pageSizePx(page)
-    const w = width * scale
-    const h = height * scale
+    const bleed = options.includeBleed ? bleedPx(page) : 0
+    const w = (width + bleed * 2) * scale
+    const h = (height + bleed * 2) * scale
     const img = canvas.toDataURL('image/jpeg', 0.92)
     const pdf = new jsPDF({
       orientation: w > h ? 'landscape' : 'portrait',
@@ -212,6 +365,9 @@ export async function exportPage(page: Page, format: ExportFormat, scale = 1): P
       hotfixes: ['px_scaling'],
     })
     pdf.addImage(img, 'JPEG', 0, 0, w, h)
+    if (options.dpi && options.dpi > 96) {
+      pdf.setProperties({ title: page.name, subject: `Exported at ${options.dpi} DPI equivalent` })
+    }
     pdf.save(`${base}.pdf`)
     return
   }
@@ -228,7 +384,49 @@ export async function exportPage(page: Page, format: ExportFormat, scale = 1): P
   )
 }
 
-/** @deprecated use exportPage */
-export async function exportPagePng(page: Page, scale = 1): Promise<void> {
-  return exportPage(page, 'png', scale)
+/** Export multiple pages or merge to multi-page PDF */
+export async function exportPages(doc: DocumentModel, pageIndices: number[], options: ExportOptions): Promise<void> {
+  if (pageIndices.length === 1 && options.format !== 'pdf') {
+    const page = doc.pages[pageIndices[0]]
+    return exportPage(page, options)
+  }
+  if (options.format === 'pdf') {
+    const scale = dpiToScale(options.dpi ?? 96)
+    let pdf: jsPDF | null = null
+    for (const idx of pageIndices) {
+      const page = doc.pages[idx]
+      const canvas = await renderPageToCanvas(page, scale, {
+        includeBleed: options.includeBleed,
+        cropMarks: options.cropMarks,
+        selectionIds: options.selectionIds,
+        templateVariables: options.templateVariables ?? doc.templateVariables,
+      })
+      const { width, height } = pageSizePx(page)
+      const bleed = options.includeBleed ? bleedPx(page) : 0
+      const w = (width + bleed * 2) * scale
+      const h = (height + bleed * 2) * scale
+      const img = canvas.toDataURL('image/jpeg', 0.92)
+      if (!pdf) {
+        pdf = new jsPDF({
+          orientation: w > h ? 'landscape' : 'portrait',
+          unit: 'px',
+          format: [w, h],
+          hotfixes: ['px_scaling'],
+        })
+      } else {
+        pdf.addPage([w, h], w > h ? 'landscape' : 'portrait')
+      }
+      pdf.addImage(img, 'JPEG', 0, 0, w, h)
+    }
+    pdf!.save(`${doc.name.replace(/\s+/g, '-').toLowerCase()}-export.pdf`)
+    return
+  }
+  for (const idx of pageIndices) {
+    await exportPage(doc.pages[idx], options)
+  }
+}
+
+/** @deprecated use exportPage with options */
+export async function exportPageLegacy(page: Page, format: ExportFormat, scale = 1): Promise<void> {
+  return exportPage(page, { format, dpi: scale * 96 })
 }

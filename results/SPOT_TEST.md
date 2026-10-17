@@ -1,6 +1,6 @@
 # Spot-test notes
 
-Date: 2026-10-16 · Ports 5173 (Claude), 5174 (Composer), 5176 (CE.SDK)
+Date: 2026-10-16 (CE.SDK/Claude) · Composer screenshot refreshed 2026-10-17 after session 3 · Ports 5173 (Claude), 5174 (Composer), 5176 (CE.SDK)
 
 Shared ids: **1, 3, 6, 7, 12, 13, 20, 22, 34, 41**
 
@@ -33,7 +33,7 @@ Screenshot: `screenshots/claude-cursor-day-1-editor.png`
 | 13 | pass — Inter / size / weight |
 | 20 | pass (session 2) — LTR/RTL |
 | 22 | pass (session 2) — crop |
-| 34 | fail — SVG not path-editable |
+| 34 | pass (session 3) — SVG path import + recolor |
 | 41 | pass (session 2) — PNG/JPEG/WebP/PDF dropdown |
 
 Screenshot: `screenshots/cursor-day-1-editor.png`
@@ -48,10 +48,10 @@ Screenshot: `screenshots/cursor-day-1-editor.png`
 
 Screenshot: `screenshots/cesdk-day-1-editor.png`
 
-## Rollup after live CE.SDK re-score
+## Rollup (post Composer session 3)
 
 | Build | pass | partial | fail | weighted |
 |-------|-----:|--------:|-----:|---------:|
 | Claude | 45 | 3 | 19 | 110 |
-| Composer | 18 | 10 | 39 | 46 |
+| Composer | 40 | 8 | 19 | 98 |
 | CE.SDK | 38 | 12 | 17 | 91 |
