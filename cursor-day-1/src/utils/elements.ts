@@ -25,8 +25,10 @@ function baseShape(
     height,
     rotation: 0,
     opacity: 1,
+    blendMode: 'normal',
     locked: false,
     visible: true,
+    templateLock: false,
     fillKind: 'solid',
     fill: '#6366f1',
     gradientTo: '#a855f7',
@@ -51,8 +53,13 @@ export function createText(x = 100, y = 100): TextElement {
     height: 80,
     rotation: 0,
     opacity: 1,
+    blendMode: 'normal',
     locked: false,
     visible: true,
+    templateLock: false,
+    verticalAlign: 'top',
+    paragraphSpacing: 0,
+    autoFit: false,
     content: 'Double-click to edit',
     fontFamily: 'Inter, sans-serif',
     fontSize: 32,
@@ -126,8 +133,10 @@ export function createImageFromFile(
     height: h,
     rotation: 0,
     opacity: 1,
+    blendMode: 'normal',
     locked: false,
     visible: true,
+    templateLock: false,
     src,
     flipX: false,
     flipY: false,
@@ -135,6 +144,49 @@ export function createImageFromFile(
     cropY: 0,
     cropW: 1,
     cropH: 1,
+    brightness: 1,
+    contrast: 1,
+    saturation: 1,
+    exposure: 0,
+    temperature: 0,
+    filterPreset: 'none',
+    maskShape: 'none',
+    isPlaceholder: false,
+  }
+}
+
+export function createImagePlaceholder(aspect = 4 / 5, x = 100, y = 100, w = 240): ImageElement {
+  const h = w / aspect
+  return {
+    id: newId(),
+    type: 'image',
+    name: 'Photo slot',
+    x,
+    y,
+    width: w,
+    height: h,
+    rotation: 0,
+    opacity: 1,
+    blendMode: 'normal',
+    locked: false,
+    visible: true,
+    templateLock: false,
+    src: '',
+    flipX: false,
+    flipY: false,
+    cropX: 0,
+    cropY: 0,
+    cropW: 1,
+    cropH: 1,
+    isPlaceholder: true,
+    placeholderAspect: aspect,
+    brightness: 1,
+    contrast: 1,
+    saturation: 1,
+    exposure: 0,
+    temperature: 0,
+    filterPreset: 'none',
+    maskShape: 'none',
   }
 }
 
@@ -145,9 +197,20 @@ export function elementLabel(el: DesignElement): string {
 
 /** Default shape fields for JSON import of older projects. */
 export function normalizeElement(el: DesignElement): DesignElement {
+  const base = {
+    blendMode: el.blendMode ?? 'normal',
+    templateLock: el.templateLock ?? false,
+  }
   if (el.type === 'text') {
     const t = el as TextElement
-    return { ...t, direction: t.direction ?? 'ltr' }
+    return {
+      ...t,
+      ...base,
+      direction: t.direction ?? 'ltr',
+      verticalAlign: t.verticalAlign ?? 'top',
+      paragraphSpacing: t.paragraphSpacing ?? 0,
+      autoFit: t.autoFit ?? false,
+    }
   }
   if (
     el.type === 'rect' ||
@@ -159,11 +222,27 @@ export function normalizeElement(el: DesignElement): DesignElement {
     const s = el as ShapeElement
     return {
       ...s,
+      ...base,
       fillKind: s.fillKind ?? 'solid',
       gradientTo: s.gradientTo ?? '#a855f7',
       gradientAngle: s.gradientAngle ?? 135,
       starPoints: s.starPoints ?? 5,
       polygonSides: s.polygonSides ?? 6,
+    }
+  }
+  if (el.type === 'image') {
+    const im = el as ImageElement
+    return {
+      ...im,
+      ...base,
+      brightness: im.brightness ?? 1,
+      contrast: im.contrast ?? 1,
+      saturation: im.saturation ?? 1,
+      exposure: im.exposure ?? 0,
+      temperature: im.temperature ?? 0,
+      filterPreset: im.filterPreset ?? 'none',
+      maskShape: im.maskShape ?? 'none',
+      isPlaceholder: im.isPlaceholder ?? false,
     }
   }
   return el

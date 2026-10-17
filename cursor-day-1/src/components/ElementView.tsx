@@ -6,11 +6,14 @@ import type {
   ImageElement,
 } from '../types/document'
 import { shapeFillCss } from '../utils/shapeStyle'
+import { imageFilterCss } from '../utils/imageFilters'
+import { effectiveFontSize, resolveVariables } from '../utils/textLayout'
 
 interface Props {
   element: DesignElement
   selected: boolean
   editingTextId: string | null
+  templateVariables?: Record<string, string>
   onSelect: (id: string, additive: boolean) => void
   onStartEdit: (id: string) => void
   onTextChange: (id: string, content: string) => void
@@ -21,6 +24,7 @@ export function ElementView({
   element,
   selected,
   editingTextId,
+  templateVariables = {},
   onSelect,
   onStartEdit,
   onTextChange,
@@ -36,6 +40,7 @@ export function ElementView({
     height: element.height,
     transform: `rotate(${element.rotation}deg)`,
     opacity: element.opacity,
+    mixBlendMode: element.blendMode && element.blendMode !== 'normal' ? element.blendMode : undefined,
     pointerEvents: element.locked ? 'none' : 'auto',
     boxSizing: 'border-box',
     outline: selected ? '2px solid #2563eb' : undefined,
@@ -60,6 +65,7 @@ export function ElementView({
     return (
       <TextView
         el={element}
+        vars={templateVariables}
         style={style}
         editing={editingTextId === element.id}
         onPointerDown={handlePointerDown}
@@ -101,6 +107,7 @@ export function ElementView({
 
 function TextView({
   el,
+  vars,
   style,
   editing,
   onPointerDown,
@@ -109,6 +116,7 @@ function TextView({
   onEndEdit,
 }: {
   el: TextElement
+  vars: Record<string, string>
   style: CSSProperties
   editing: boolean
   onPointerDown: (e: PointerEvent) => void
@@ -116,11 +124,22 @@ function TextView({
   onTextChange: (id: string, content: string) => void
   onEndEdit: () => void
 }) {
+  const displayContent = editing ? el.content : resolveVariables(el.content, vars)
+  const fontSize = effectiveFontSize({ ...el, content: displayContent })
+  const lh = fontSize * el.lineHeight
+  const para = el.paragraphSpacing ?? 0
+  const lines = displayContent.split('\n')
+  const blockH = lines.length * lh + Math.max(0, lines.length - 1) * para
+  let padTop = 4
+  const vAlign = el.verticalAlign ?? 'top'
+  if (vAlign === 'middle') padTop = Math.max(4, (el.height - blockH) / 2)
+  if (vAlign === 'bottom') padTop = Math.max(4, el.height - blockH - 4)
+
   const textStyle: CSSProperties = {
     width: '100%',
-    height: '100%',
+    minHeight: '100%',
     fontFamily: el.fontFamily,
-    fontSize: el.fontSize,
+    fontSize,
     fontWeight: el.fontWeight,
     fontStyle: el.fontStyle,
     textAlign: el.textAlign,
@@ -132,13 +151,14 @@ function TextView({
     whiteSpace: 'pre-wrap',
     overflow: 'hidden',
     margin: 0,
-    padding: 4,
+    padding: `${padTop}px 4px 4px`,
     border: 'none',
-    background: 'transparent',
+    background: el.textBackground ?? 'transparent',
     resize: 'none',
     outline: editing ? '1px dashed #93c5fd' : 'none',
     direction: el.direction ?? 'ltr',
     unicodeBidi: 'plaintext',
+    boxSizing: 'border-box',
   }
 
   return (
@@ -157,7 +177,11 @@ function TextView({
         />
       ) : (
         <div dir={el.direction ?? 'ltr'} style={{ ...textStyle, pointerEvents: 'none' }}>
-          {el.content}
+          {displayContent.split('\n').map((line, i) => (
+            <span key={i} style={{ display: 'block', marginBottom: i < lines.length - 1 ? para : 0 }}>
+              {line}
+            </span>
+          ))}
         </div>
       )}
     </div>
@@ -272,6 +296,12 @@ function polygonPoints(w: number, h: number, sides: number): string {
   return pts.join(' ')
 }
 
+function maskClip(mask: ImageElement['maskShape']): string | undefined {
+  if (mask === 'circle' || mask === 'ellipse') return 'ellipse(50% 50% at 50% 50%)'
+  if (mask === 'rect') return 'inset(0 round 4px)'
+  return undefined
+}
+
 function ImageView({
   el,
   style,
@@ -283,15 +313,50 @@ function ImageView({
   onPointerDown: (e: PointerEvent) => void
   onDoubleClick: (e: MouseEvent) => void
 }) {
+  if (el.vectorPaths?.length) {
+    const vb = el.vectorViewBox ?? '0 0 100 100'
+    return (
+      <div style={style} onPointerDown={onPointerDown} onDoubleClick={onDoubleClick}>
+        <svg width="100%" height="100%" viewBox={vb} style={{ pointerEvents: 'none' }}>
+          {el.vectorPaths.map((p) => (
+            <path key={p.id} d={p.d} fill={p.fill} />
+          ))}
+        </svg>
+      </div>
+    )
+  }
+
+  if (el.isPlaceholder && !el.src) {
+    return (
+      <div
+        style={{
+          ...style,
+          border: '2px dashed #64748b',
+          background: 'rgba(148,163,184,0.12)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: '#94a3b8',
+          fontSize: 12,
+        }}
+        onPointerDown={onPointerDown}
+        onDoubleClick={onDoubleClick}
+      >
+        Drop image
+      </div>
+    )
+  }
+
   const flip = `scale(${el.flipX ? -1 : 1}, ${el.flipY ? -1 : 1})`
   const imgW = 100 / el.cropW
   const imgH = 100 / el.cropH
   const imgX = (-el.cropX / el.cropW) * 100
   const imgY = (-el.cropY / el.cropH) * 100
+  const clip = maskClip(el.maskShape)
 
   return (
     <div
-      style={{ ...style, overflow: 'hidden' }}
+      style={{ ...style, overflow: 'hidden', clipPath: clip }}
       onPointerDown={onPointerDown}
       onDoubleClick={onDoubleClick}
     >
@@ -309,6 +374,7 @@ function ImageView({
           pointerEvents: 'none',
           userSelect: 'none',
           maxWidth: 'none',
+          filter: imageFilterCss(el),
         }}
       />
     </div>

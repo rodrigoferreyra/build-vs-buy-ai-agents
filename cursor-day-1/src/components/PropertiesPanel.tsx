@@ -1,6 +1,18 @@
-import type { CustomFont, DesignElement, TextElement, ShapeElement, ImageElement } from '../types/document'
+import type {
+  CustomFont,
+  DesignElement,
+  TextElement,
+  ShapeElement,
+  ImageElement,
+  BlendMode,
+  EditorRole,
+  BrandKit,
+  Page,
+  DocumentModel,
+} from '../types/document'
 import { applyCropAspect } from '../utils/crop'
 import { isShape } from '../types/document'
+import type { FilterPreset } from '../utils/imageFilters'
 
 const FONT_FAMILIES = [
   'Inter, sans-serif',
@@ -10,19 +22,122 @@ const FONT_FAMILIES = [
   'Courier New, monospace',
 ]
 
+const BLEND_MODES: BlendMode[] = [
+  'normal',
+  'multiply',
+  'screen',
+  'overlay',
+  'darken',
+  'lighten',
+  'color-dodge',
+  'color-burn',
+  'hard-light',
+  'soft-light',
+  'difference',
+  'exclusion',
+]
+
+const FILTER_PRESETS: FilterPreset[] = ['none', 'grayscale', 'sepia', 'vintage', 'cool', 'warm']
+
 interface Props {
   selection: DesignElement[]
   customFonts: CustomFont[]
+  document: DocumentModel
+  page: Page
+  editorRole: EditorRole
   onUpdate: (id: string, patch: Partial<DesignElement>) => void
   onUploadFont: (file: File) => void
+  onUpdatePage: (patch: Partial<Page>) => void
+  onUpdateDocument: (patch: Partial<DocumentModel>) => void
+  onFillPlaceholder: (id: string, file: File) => void
 }
 
-export function PropertiesPanel({ selection, customFonts, onUpdate, onUploadFont }: Props) {
+export function PropertiesPanel({
+  selection,
+  customFonts,
+  document,
+  page,
+  editorRole,
+  onUpdate,
+  onUploadFont,
+  onUpdatePage,
+  onUpdateDocument,
+  onFillPlaceholder,
+}: Props) {
+  const brand = document.brandKit ?? { colors: [], restrictPalette: false }
+  const isCreator = editorRole === 'creator'
+
   if (selection.length === 0) {
     return (
       <aside className="panel props-panel">
-        <h2>Properties</h2>
-        <p className="muted">Select an element to edit properties.</p>
+        <h2>Document</h2>
+        <label>
+          Role
+          <select
+            value={editorRole}
+            onChange={(e) => onUpdateDocument({ editorRole: e.target.value as EditorRole })}
+          >
+            <option value="creator">Creator</option>
+            <option value="adopter">Adopter</option>
+          </select>
+        </label>
+        <p className="muted">{isCreator ? 'Full template editing' : 'Locked layers stay fixed'}</p>
+        <label>
+          Bleed (mm)
+          <input
+            type="number"
+            min={0}
+            step={0.5}
+            value={page.bleedMm ?? 0}
+            disabled={!isCreator}
+            onChange={(e) => onUpdatePage({ bleedMm: parseFloat(e.target.value) || 0 })}
+          />
+        </label>
+        <label>
+          Margin (mm)
+          <input
+            type="number"
+            min={0}
+            step={0.5}
+            value={page.marginMm ?? 0}
+            disabled={!isCreator}
+            onChange={(e) => onUpdatePage({ marginMm: parseFloat(e.target.value) || 0 })}
+          />
+        </label>
+        <h3 style={{ marginTop: 16 }}>Brand kit</h3>
+        <label>
+          <input
+            type="checkbox"
+            checked={brand.restrictPalette}
+            disabled={!isCreator}
+            onChange={(e) =>
+              onUpdateDocument({
+                brandKit: { ...brand, restrictPalette: e.target.checked },
+              })
+            }
+          />
+          Restrict palette to brand colors
+        </label>
+        <div className="brand-swatches">
+          {brand.colors.map((c, i) => (
+            <input
+              key={i}
+              type="color"
+              value={c}
+              disabled={!isCreator}
+              onChange={(e) => {
+                const colors = [...brand.colors]
+                colors[i] = e.target.value
+                onUpdateDocument({ brandKit: { ...brand, colors } })
+              }}
+            />
+          ))}
+        </div>
+        <h3 style={{ marginTop: 16 }}>Template variables</h3>
+        <VariableEditor
+          vars={document.templateVariables ?? {}}
+          onChange={(templateVariables) => onUpdateDocument({ templateVariables })}
+        />
         <label className="file-btn" style={{ marginTop: 12 }}>
           Upload font
           <input
@@ -41,14 +156,29 @@ export function PropertiesPanel({ selection, customFonts, onUpdate, onUploadFont
 
   const el = selection[0]
   const multi = selection.length > 1
+  const adopterLocked = editorRole === 'adopter' && !!el.templateLock
 
   return (
     <aside className="panel props-panel">
       <h2>Properties</h2>
       {multi && <p className="muted">{selection.length} selected</p>}
+      {adopterLocked && <p className="warn">Template-locked (adopter)</p>}
 
-      {!multi && (
+      {!multi && !adopterLocked && (
         <>
+          <label>
+            Blend mode
+            <select
+              value={el.blendMode ?? 'normal'}
+              onChange={(e) => onUpdate(el.id, { blendMode: e.target.value as BlendMode })}
+            >
+              {BLEND_MODES.map((m) => (
+                <option key={m} value={m}>
+                  {m}
+                </option>
+              ))}
+            </select>
+          </label>
           <label>
             Opacity
             <input
@@ -60,6 +190,16 @@ export function PropertiesPanel({ selection, customFonts, onUpdate, onUploadFont
               onChange={(e) => onUpdate(el.id, { opacity: parseFloat(e.target.value) })}
             />
           </label>
+          {isCreator && (
+            <label>
+              <input
+                type="checkbox"
+                checked={!!el.templateLock}
+                onChange={(e) => onUpdate(el.id, { templateLock: e.target.checked })}
+              />
+              Lock for adopters
+            </label>
+          )}
           <label>
             Rotation (°)
             <input
@@ -71,21 +211,87 @@ export function PropertiesPanel({ selection, customFonts, onUpdate, onUploadFont
         </>
       )}
 
-      {el.type === 'text' && !multi && <TextProps el={el} customFonts={customFonts} onUpdate={onUpdate} onUploadFont={onUploadFont} />}
-      {isShape(el) && !multi && <ShapeProps el={el} onUpdate={onUpdate} />}
-      {el.type === 'image' && !multi && <ImageProps el={el} onUpdate={onUpdate} />}
+      {el.type === 'text' && !multi && !adopterLocked && (
+        <TextProps
+          el={el}
+          customFonts={customFonts}
+          brand={brand}
+          onUpdate={onUpdate}
+          onUploadFont={onUploadFont}
+        />
+      )}
+      {isShape(el) && !multi && !adopterLocked && (
+        <ShapeProps el={el} brand={brand} onUpdate={onUpdate} />
+      )}
+      {el.type === 'image' && !multi && !adopterLocked && (
+        <ImageProps el={el} onUpdate={onUpdate} onFillPlaceholder={onFillPlaceholder} />
+      )}
     </aside>
   )
+}
+
+function VariableEditor({
+  vars,
+  onChange,
+}: {
+  vars: Record<string, string>
+  onChange: (v: Record<string, string>) => void
+}) {
+  const entries = Object.entries(vars)
+  return (
+    <div className="var-editor">
+      {entries.map(([k, v]) => (
+        <div key={k} className="var-row">
+          <span>{`{${k}}`}</span>
+          <input
+            value={v}
+            onChange={(e) => onChange({ ...vars, [k]: e.target.value })}
+          />
+        </div>
+      ))}
+      <button
+        type="button"
+        onClick={() => onChange({ ...vars, name: vars.name ?? 'Sample' })}
+      >
+        + Add name
+      </button>
+    </div>
+  )
+}
+
+function ColorInput({
+  value,
+  onChange,
+  brand,
+}: {
+  value: string
+  onChange: (c: string) => void
+  brand: BrandKit
+}) {
+  if (brand.restrictPalette && brand.colors.length) {
+    return (
+      <select value={value} onChange={(e) => onChange(e.target.value)}>
+        {brand.colors.map((c) => (
+          <option key={c} value={c}>
+            {c}
+          </option>
+        ))}
+      </select>
+    )
+  }
+  return <input type="color" value={value} onChange={(e) => onChange(e.target.value)} />
 }
 
 function TextProps({
   el,
   customFonts,
+  brand,
   onUpdate,
   onUploadFont,
 }: {
   el: TextElement
   customFonts: CustomFont[]
+  brand: BrandKit
   onUpdate: (id: string, patch: Partial<DesignElement>) => void
   onUploadFont: (file: File) => void
 }) {
@@ -119,6 +325,16 @@ function TextProps({
         </select>
       </label>
       <label>
+        Variable key
+        <input
+          placeholder="e.g. name for {name}"
+          value={el.variableKey ?? ''}
+          onChange={(e) =>
+            onUpdate(el.id, { variableKey: e.target.value || undefined } as Partial<TextElement>)
+          }
+        />
+      </label>
+      <label>
         Text direction
         <select
           value={el.direction ?? 'ltr'}
@@ -140,6 +356,14 @@ function TextProps({
             onUpdate(el.id, { fontSize: parseFloat(e.target.value) || 16 } as Partial<TextElement>)
           }
         />
+      </label>
+      <label>
+        <input
+          type="checkbox"
+          checked={!!el.autoFit}
+          onChange={(e) => onUpdate(el.id, { autoFit: e.target.checked } as Partial<TextElement>)}
+        />
+        Auto-fit to box
       </label>
       <label>
         Weight
@@ -167,7 +391,7 @@ function TextProps({
         </select>
       </label>
       <label>
-        Align
+        Horizontal align
         <select
           value={el.textAlign}
           onChange={(e) =>
@@ -180,6 +404,21 @@ function TextProps({
         </select>
       </label>
       <label>
+        Vertical align
+        <select
+          value={el.verticalAlign ?? 'top'}
+          onChange={(e) =>
+            onUpdate(el.id, {
+              verticalAlign: e.target.value as TextElement['verticalAlign'],
+            } as Partial<TextElement>)
+          }
+        >
+          <option value="top">Top</option>
+          <option value="middle">Middle</option>
+          <option value="bottom">Bottom</option>
+        </select>
+      </label>
+      <label>
         Line height
         <input
           type="number"
@@ -188,6 +427,18 @@ function TextProps({
           value={el.lineHeight}
           onChange={(e) =>
             onUpdate(el.id, { lineHeight: parseFloat(e.target.value) || 1.2 } as Partial<TextElement>)
+          }
+        />
+      </label>
+      <label>
+        Paragraph spacing (px)
+        <input
+          type="number"
+          min={0}
+          step={2}
+          value={el.paragraphSpacing ?? 0}
+          onChange={(e) =>
+            onUpdate(el.id, { paragraphSpacing: parseFloat(e.target.value) || 0 } as Partial<TextElement>)
           }
         />
       </label>
@@ -204,10 +455,20 @@ function TextProps({
       </label>
       <label>
         Color
+        <ColorInput
+          value={el.fill}
+          brand={brand}
+          onChange={(fill) => onUpdate(el.id, { fill } as Partial<TextElement>)}
+        />
+      </label>
+      <label>
+        Text background
         <input
           type="color"
-          value={el.fill}
-          onChange={(e) => onUpdate(el.id, { fill: e.target.value } as Partial<TextElement>)}
+          value={el.textBackground ?? '#ffffff'}
+          onChange={(e) =>
+            onUpdate(el.id, { textBackground: e.target.value } as Partial<TextElement>)
+          }
         />
       </label>
       <label>
@@ -240,9 +501,11 @@ function TextProps({
 
 function ShapeProps({
   el,
+  brand,
   onUpdate,
 }: {
   el: ShapeElement
+  brand: BrandKit
   onUpdate: (id: string, patch: Partial<DesignElement>) => void
 }) {
   return (
@@ -261,20 +524,20 @@ function ShapeProps({
       </label>
       <label>
         {el.fillKind === 'gradient' ? 'Gradient start' : 'Fill'}
-        <input
-          type="color"
+        <ColorInput
           value={el.fill}
-          onChange={(e) => onUpdate(el.id, { fill: e.target.value } as Partial<ShapeElement>)}
+          brand={brand}
+          onChange={(fill) => onUpdate(el.id, { fill } as Partial<ShapeElement>)}
         />
       </label>
       {el.fillKind === 'gradient' && (
         <>
           <label>
             Gradient end
-            <input
-              type="color"
+            <ColorInput
               value={el.gradientTo}
-              onChange={(e) => onUpdate(el.id, { gradientTo: e.target.value } as Partial<ShapeElement>)}
+              brand={brand}
+              onChange={(gradientTo) => onUpdate(el.id, { gradientTo } as Partial<ShapeElement>)}
             />
           </label>
           <label>
@@ -291,10 +554,10 @@ function ShapeProps({
       )}
       <label>
         Stroke
-        <input
-          type="color"
+        <ColorInput
           value={el.stroke}
-          onChange={(e) => onUpdate(el.id, { stroke: e.target.value } as Partial<ShapeElement>)}
+          brand={brand}
+          onChange={(stroke) => onUpdate(el.id, { stroke } as Partial<ShapeElement>)}
         />
       </label>
       <label>
@@ -356,9 +619,11 @@ function ShapeProps({
 function ImageProps({
   el,
   onUpdate,
+  onFillPlaceholder,
 }: {
   el: ImageElement
   onUpdate: (id: string, patch: Partial<DesignElement>) => void
+  onFillPlaceholder: (id: string, file: File) => void
 }) {
   const setCrop = (patch: Partial<ImageElement>) => onUpdate(el.id, patch as Partial<DesignElement>)
 
@@ -369,6 +634,124 @@ function ImageProps({
 
   return (
     <>
+      {el.isPlaceholder && (
+        <label className="file-btn">
+          Fill placeholder
+          <input
+            type="file"
+            accept="image/*"
+            onChange={(e) => {
+              const f = e.target.files?.[0]
+              if (f) onFillPlaceholder(el.id, f)
+              e.target.value = ''
+            }}
+          />
+        </label>
+      )}
+      {el.vectorPaths?.length && (
+        <>
+          <p className="muted">SVG paths (recolor)</p>
+          {el.vectorPaths.map((p, i) => (
+            <label key={p.id}>
+              Path {i + 1}
+              <input
+                type="color"
+                value={p.fill}
+                onChange={(e) => {
+                  const vectorPaths = el.vectorPaths!.map((vp, j) =>
+                    j === i ? { ...vp, fill: e.target.value } : vp,
+                  )
+                  onUpdate(el.id, { vectorPaths } as Partial<ImageElement>)
+                }}
+              />
+            </label>
+          ))}
+        </>
+      )}
+      <label>
+        Mask shape
+        <select
+          value={el.maskShape ?? 'none'}
+          onChange={(e) =>
+            onUpdate(el.id, { maskShape: e.target.value as ImageElement['maskShape'] } as Partial<ImageElement>)
+          }
+        >
+          <option value="none">None</option>
+          <option value="circle">Circle</option>
+          <option value="ellipse">Ellipse</option>
+          <option value="rect">Rectangle</option>
+        </select>
+      </label>
+      <label>
+        Filter preset
+        <select
+          value={el.filterPreset ?? 'none'}
+          onChange={(e) =>
+            onUpdate(el.id, { filterPreset: e.target.value as FilterPreset } as Partial<ImageElement>)
+          }
+        >
+          {FILTER_PRESETS.map((f) => (
+            <option key={f} value={f}>
+              {f}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label>
+        Brightness
+        <input
+          type="range"
+          min={0.2}
+          max={2}
+          step={0.05}
+          value={el.brightness ?? 1}
+          onChange={(e) => setCrop({ brightness: parseFloat(e.target.value) })}
+        />
+      </label>
+      <label>
+        Contrast
+        <input
+          type="range"
+          min={0.2}
+          max={2}
+          step={0.05}
+          value={el.contrast ?? 1}
+          onChange={(e) => setCrop({ contrast: parseFloat(e.target.value) })}
+        />
+      </label>
+      <label>
+        Saturation
+        <input
+          type="range"
+          min={0}
+          max={2}
+          step={0.05}
+          value={el.saturation ?? 1}
+          onChange={(e) => setCrop({ saturation: parseFloat(e.target.value) })}
+        />
+      </label>
+      <label>
+        Exposure
+        <input
+          type="range"
+          min={-1}
+          max={1}
+          step={0.05}
+          value={el.exposure ?? 0}
+          onChange={(e) => setCrop({ exposure: parseFloat(e.target.value) })}
+        />
+      </label>
+      <label>
+        Temperature
+        <input
+          type="range"
+          min={-1}
+          max={1}
+          step={0.05}
+          value={el.temperature ?? 0}
+          onChange={(e) => setCrop({ temperature: parseFloat(e.target.value) })}
+        />
+      </label>
       <p className="muted" style={{ margin: '8px 0' }}>
         Crop (normalized)
       </p>

@@ -45,3 +45,35 @@ Most other ids **fail** or out of scope.
 - Working app under `cursor-day-1/src/`
 - `README.md`, `TIME_LOG.md`, `PROGRESS.md`, `STOPPED.md`
 - This transcript
+
+---
+
+## Session 3
+
+| | |
+|---|---|
+| **Start** | 2026-10-17T12:14:43-03:00 |
+| **End** | 2026-10-17T12:18:42-03:00 |
+| **Duration** | ~4 min wall clock (dense implementation batch) |
+| **Model** | `composer-2.5-fast` |
+
+### Shipped
+
+- Rulers + manual guides + snap; blend modes; copy/paste and copy-to-page across pages
+- Text: paragraph spacing, vertical align, auto-fit, background; image adjustments, filters, masks, placeholders, stock library, SVG path recolor
+- Templates: save/library/search, template locks, creator/adopter roles, brand kit, `{variables}`
+- Export: DPI, bleed, crop marks option, page/all/selection scope
+- Theme light/dark; partial DE strings; seed social template
+
+### Score delta (from `PROGRESS.md` + checklist weights)
+
+- **Weighted pass:** 46 → **98** / 159 (+52); **40** pass / 8 partial / 19 fail
+- **New pass (from fail/partial):** 4, 10, 11, 15, 16, 17, 19, 23, 24, 26, 28, 29, 34, 35, 36, 37, 38, 39, 40, 42, 44, 48
+- **New partial:** 46, 62, 64, 65 (47 remains partial)
+- Parent follow-up: `npm run build` re-verified OK; rollup written to `results/`
+
+### Verification
+
+```bash
+cd cursor-day-1 && npm run build  # OK
+```

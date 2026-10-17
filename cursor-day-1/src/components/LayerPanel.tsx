@@ -34,7 +34,10 @@ export function LayerPanel({
               onClick={() => onSelect(el.id)}
             >
               <span className="layer-type">{el.type[0].toUpperCase()}</span>
-              <span className="layer-name">{elementLabel(el)}</span>
+              <span className="layer-name">
+                {elementLabel(el)}
+                {el.templateLock ? ' 🔐' : ''}
+              </span>
               <div className="layer-actions">
                 <button
                   type="button"

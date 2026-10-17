@@ -6,8 +6,17 @@ const STORAGE_KEY = 'cursor-day-1-design'
 function normalizeState(state: EditorState): EditorState {
   const doc = state.document
   doc.customFonts = doc.customFonts ?? []
+  doc.editorRole = doc.editorRole ?? 'creator'
+  doc.brandKit = doc.brandKit ?? { colors: ['#2563eb', '#f97316', '#111827'], restrictPalette: false }
+  doc.templateVariables = doc.templateVariables ?? {}
+  doc.isTemplate = doc.isTemplate ?? false
+  doc.uiLocale = doc.uiLocale ?? 'en'
+  doc.uiTheme = doc.uiTheme ?? 'dark'
   for (const page of doc.pages) {
     page.elements = page.elements.map(normalizeElement)
+    page.guides = page.guides ?? []
+    page.bleedMm = page.bleedMm ?? 0
+    page.marginMm = page.marginMm ?? 0
   }
   return state
 }

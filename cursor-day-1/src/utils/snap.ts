@@ -27,10 +27,15 @@ export function snapPoint(
   pageW: number,
   pageH: number,
   otherBounds: { x: number; y: number; w: number; h: number }[],
+  manualGuides: { orientation: 'h' | 'v'; position: number }[] = [],
 ): { x: number; y: number; guides: SnapGuide[] } {
   const guides: SnapGuide[] = []
   const xTargets = [0, pageW / 2, pageW]
   const yTargets = [0, pageH / 2, pageH]
+  for (const g of manualGuides) {
+    if (g.orientation === 'v') xTargets.push(g.position)
+    else yTargets.push(g.position)
+  }
 
   for (const b of otherBounds) {
     xTargets.push(b.x, b.x + b.w / 2, b.x + b.w)
