@@ -10,7 +10,7 @@ Companion repo for the IMG.LY experiment: two coding-agent builds vs one CE.SDK 
 |--------|------|-------|--------------------:|
 | [`claude-cursor-day-1/`](./claude-cursor-day-1/) | Agent (no CE.SDK) | Claude Sonnet 5.5 High | 110 |
 | [`cursor-day-1/`](./cursor-day-1/) | Agent (no CE.SDK) | Composer 2.5 Fast | 98 |
-| [`cesdk-day-1/`](./cesdk-day-1/) | Control | CE.SDK 1.83.0 design editor | 91 |
+| [`cesdk-day-1/`](./cesdk-day-1/) | Control | CE.SDK 1.83.0 design editor | 108 |
 
 ## Run locally
 

@@ -28,6 +28,7 @@ import {
 } from '@cesdk/cesdk-js/plugins';
 
 import BackgroundRemovalPlugin from '@imgly/plugin-background-removal-web';
+import VectorizerPlugin from '@imgly/plugin-vectorizer-web';
 
 // Configuration and plugins
 import { DesignEditorConfig } from './config/plugin';
@@ -61,7 +62,9 @@ export async function initDesignEditor(cesdk: CreativeEditorSDK) {
 
   // Configure appearance: 'light' | 'dark' | 'system'
   // cesdk.setTheme('dark');
-  // cesdk.setLocale('en');
+  cesdk.i18n.setLocale('en');
+  // Default role for template authoring; experiment chrome can switch to Adopter.
+  cesdk.engine.editor.setRole('Creator');
 
   // ============================================================================
   // Asset Source Plugins
@@ -162,6 +165,16 @@ export async function initDesignEditor(cesdk: CreativeEditorSDK) {
       provider: {
         type: '@imgly/background-removal'
       }
+    })
+  );
+
+  // ============================================================================
+  // Vectorizer Plugin (raster → vector paths)
+  // ============================================================================
+
+  await cesdk.addPlugin(
+    VectorizerPlugin({
+      ui: { locations: 'canvasMenu' },
     })
   );
 }

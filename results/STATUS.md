@@ -1,15 +1,15 @@
-# Experiment status — wrapped (Composer session 3 applied)
+# Experiment status — wrapped (Composer S3 + CE.SDK S3)
 
-**Status:** Frozen for Claude (“Other models”). Composer session 3 completed 2026-10-17 (Cursor Models).  
-**CE.SDK:** Live licensed re-score completed 2026-10-16T14:18:41-03:00.
+**Status:** Frozen for Claude (“Other models”). Composer session 3 and CE.SDK session 3 applied 2026-10-17.  
+**CE.SDK:** Live licensed re-score; session 3 wired kit-supported gaps.
 
 ## Final scores
 
 | Build | pass | weighted / 159 | Logged agent time |
 |-------|-----:|---------------:|-------------------|
 | Claude | 45 | 110 | ~43 min (2 sessions) |
-| Composer | 40 | 98 | ~8 min (3 sessions; S3 ~4 min) |
-| CE.SDK | 38 | 91 | scaffold + live spot-test |
+| Composer | 40 | 98 | ~8 min (3 sessions) |
+| CE.SDK | 46 | 108 | scaffold + live spot-test + S3 wire (~3 min) |
 
 ## Article framing
 
