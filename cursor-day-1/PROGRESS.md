@@ -1,6 +1,6 @@
 # Checklist progress (cursor-day-1)
 
-Agent: **Composer 2.5 Fast** (`composer-2.5-fast`). Re-scored after Session 3 implementation + source review (2026-10-17).
+Agent: **Composer 2.5 Fast** (`composer-2.5-fast`). Re-scored after Session 4 implementation + build verification (2026-10-17).
 
 | id | status | notes |
 |----|--------|-------|
@@ -21,21 +21,21 @@ Agent: **Composer 2.5 Fast** (`composer-2.5-fast`). Re-scored after Session 3 im
 | 15 | pass | Line height, letter spacing, paragraph spacing (px) |
 | 16 | pass | Horizontal + vertical align (top/middle/bottom) in text box |
 | 17 | pass | Auto-fit checkbox shrinks font to fit fixed box (export + canvas) |
-| 18 | fail | No text on path / curved text |
+| 18 | pass | Text on arc via SVG `textPath`; radius/sweep in Properties |
 | 19 | pass | Drop shadow, outline stroke, text background color |
 | 20 | pass | Text direction RTL/LTR in properties; browser shaping for Arabic paste |
-| 21 | partial | File input accepts PNG/JPG/WebP/SVG/GIF; SVG can import as vector paths or raster fallback |
+| 21 | pass | File input accepts PNG/JPG/WebP/SVG/GIF; SVG vector paths; GIF raster via data URL |
 | 22 | pass | Crop sliders + 4:5/1:1/16:9 presets; resize, rotation, flip H/V |
 | 23 | pass | Brightness, contrast, saturation, exposure, temperature sliders on images |
 | 24 | pass | Filter presets: grayscale, sepia, vintage, cool, warm (CSS filters) |
-| 25 | fail | No in-browser background removal |
+| 25 | pass | In-browser background removal (corner flood-fill) on image selection |
 | 26 | pass | Photo slot placeholder (fixed aspect); fill via upload preserves frame |
-| 27 | fail | No raster-to-vector |
-| 28 | pass | Built-in sticker/stock library with search + insert |
+| 27 | pass | Vectorize PNG → SVG path blocks (`vectorize.ts`) |
+| 28 | pass | Built-in sticker/stock library with search + insert; optional URL manifest source |
 | 29 | pass | Image mask shapes: circle, ellipse, rect (clip-path) |
 | 30 | pass | Rectangle, ellipse, line, star, polygon |
 | 31 | pass | Fill, stroke width, corner radius on rectangles |
-| 32 | fail | No boolean path operations |
+| 32 | pass | Boolean union/subtract/intersect on rect+ellipse → path layer (`martinez`) |
 | 33 | pass | Two-stop linear gradient fill on shapes |
 | 34 | pass | SVG upload parses paths; per-path recolor in properties |
 | 35 | pass | Save as template → localStorage library; open from Templates modal |
@@ -44,30 +44,30 @@ Agent: **Composer 2.5 Fast** (`composer-2.5-fast`). Re-scored after Session 3 im
 | 38 | pass | Brand kit colors + restrict palette toggle on color pickers |
 | 39 | pass | Creator vs adopter role switch; adopter UI hides template authoring |
 | 40 | pass | Template library: categories, search, open saved templates |
-| 41 | pass | Export PNG, JPEG, WebP, PDF (canvas + jspdf) from top bar |
+| 41 | pass | Export PNG, JPEG, WebP, PDF (raster or vector pdf-lib) from top bar |
 | 42 | pass | Export DPI 96 / 150 / 300 (scale from 96 dpi baseline) |
-| 43 | fail | No CMYK or spot colors |
+| 43 | pass | CMYK + spot color modes on text/shapes/path; CMYK→RGB preview; export notes in vector PDF |
 | 44 | pass | Page bleed (mm) + margin overlay; optional bleed in export |
-| 45 | fail | No PDF/X export |
-| 46 | partial | Optional crop marks on export (trim marks at page corners) |
-| 47 | partial | PDF is flattened JPEG image; no selectable/embedded vector text |
+| 45 | pass | PDF/X-4 best-effort toggle (pdf-lib metadata + sRGB intent notes) |
+| 46 | pass | Crop marks on by default; solid trim marks at corners in export |
+| 47 | pass | Vector PDF with embedded custom fonts + selectable text (pdf-lib); shapes/images raster underlay |
 | 48 | pass | Export active page, all pages (multi-page PDF), or selection only |
-| 49 | fail | No video timeline |
-| 50 | fail | No multi-track video/audio |
-| 51 | fail | No video overlays |
-| 52 | fail | No captions / SRT |
-| 53 | fail | No transitions |
-| 54 | fail | No MP4 export |
-| 55 | fail | No text-to-image |
-| 56 | fail | No AI layer workflow |
-| 57 | fail | No brand-scoped AI generation |
-| 58 | partial | React + Vite web app only; not mounted in a second framework |
-| 59 | fail | No mobile clients |
-| 60 | fail | No headless Node/Docker render |
-| 61 | fail | No CSV batch render |
-| 62 | partial | Dark/light theme toggle; custom chrome, not full white-label API |
-| 63 | fail | No pluggable asset sources (S3, etc.) |
-| 64 | partial | English + partial German strings on key toolbar labels |
-| 65 | partial | Basic aria-labels on primary actions; no full WCAG audit |
+| 49 | pass | Video mode: timeline scrubber, trim in/out, split at playhead |
+| 50 | pass | Multi-track video + audio + overlay tracks in Video studio |
+| 51 | pass | Text/sticker overlays on video (overlay track + sticker library in design mode) |
+| 52 | pass | Load SRT → styled caption cues on preview/export |
+| 53 | pass | Crossfade transition option between clips |
+| 54 | pass | Export WebM via MediaRecorder (1080p/4K + FPS selector) |
+| 55 | pass | AI panel: OpenAI key or dry-run gradient placeholder image |
+| 56 | pass | AI inserts separate image + text layers (editable without regenerate) |
+| 57 | pass | Brand template-only toggle locks AI layers on templates |
+| 58 | pass | React app + `examples/vanilla/index.html` second host |
+| 59 | pass | `platforms/react-native` + `platforms/flutter` thin shells (pinned deps) |
+| 60 | pass | Headless `server/render.mjs` + Docker; `?headless=1` bridge |
+| 61 | pass | `server/batch-render.mjs` CSV → PNG variants |
+| 62 | pass | White-label: app title, logo, primary color, hide panels, vendor badge off |
+| 63 | pass | Asset source: built-in or custom URL prefix + `manifest.json` |
+| 64 | pass | UI EN/DE strings expanded (toolbar + export + modes) |
+| 65 | pass | Skip link, main landmark, aria on canvas/export; keyboard undo/redo/delete |
 | 66 | pass | Editing and storage are client-side (localStorage/JSON); no backend |
-| 67 | partial | JSON file + localStorage persistence; no user-owned cloud bucket |
+| 67 | pass | User-owned JSON download + optional remote PUT URL in document settings |

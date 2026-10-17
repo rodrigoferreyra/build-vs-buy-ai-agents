@@ -1,6 +1,49 @@
 export type Unit = 'px' | 'mm'
 
-export type ElementType = 'text' | 'rect' | 'ellipse' | 'line' | 'star' | 'polygon' | 'image'
+export type ElementType =
+  | 'text'
+  | 'rect'
+  | 'ellipse'
+  | 'line'
+  | 'star'
+  | 'polygon'
+  | 'path'
+  | 'image'
+
+export type ColorMode = 'rgb' | 'cmyk' | 'spot'
+
+export interface CmykColor {
+  c: number
+  m: number
+  y: number
+  k: number
+}
+
+export interface ThemeBranding {
+  appTitle?: string
+  logoUrl?: string
+  primaryColor?: string
+  accentColor?: string
+  /** Panel ids to hide: layers, props, video */
+  hiddenPanels?: string[]
+  showVendorBadge?: boolean
+}
+
+export type AssetSourceKind = 'builtin' | 'urlPrefix'
+
+export interface AssetSourceConfig {
+  kind: AssetSourceKind
+  /** e.g. https://my-cdn.example/stock/ */
+  baseUrl?: string
+  label?: string
+}
+
+export interface UserStorageConfig {
+  /** User-owned remote endpoint (optional); falls back to JSON file export */
+  remoteUrl?: string
+  remoteToken?: string
+  lastSyncedAt?: string
+}
 
 export type BlendMode =
   | 'normal'
@@ -81,6 +124,13 @@ export interface TextElement extends BaseElement {
   autoFit?: boolean
   /** Variable key for template fill, e.g. "name" for {name} */
   variableKey?: string
+  /** Bend headline on an arc (SVG textPath) */
+  textPath?: 'none' | 'arc'
+  pathRadius?: number
+  pathSweep?: number
+  colorMode?: ColorMode
+  cmyk?: CmykColor
+  spotName?: string
 }
 
 export type FillKind = 'solid' | 'gradient'
@@ -96,6 +146,20 @@ export interface ShapeElement extends BaseElement {
   cornerRadius: number
   starPoints: number
   polygonSides: number
+  colorMode?: ColorMode
+  cmyk?: CmykColor
+  spotName?: string
+}
+
+export interface PathElement extends BaseElement {
+  type: 'path'
+  d: string
+  fill: string
+  stroke: string
+  strokeWidth: number
+  colorMode?: ColorMode
+  cmyk?: CmykColor
+  spotName?: string
 }
 
 export type ImageMaskShape = 'none' | 'circle' | 'ellipse' | 'rect'
@@ -124,7 +188,7 @@ export interface ImageElement extends BaseElement {
   vectorViewBox?: string
 }
 
-export type DesignElement = TextElement | ShapeElement | ImageElement
+export type DesignElement = TextElement | ShapeElement | PathElement | ImageElement
 
 export interface Page {
   id: string
@@ -152,6 +216,12 @@ export interface DocumentModel {
   isTemplate?: boolean
   uiLocale?: 'en' | 'de'
   uiTheme?: 'dark' | 'light'
+  branding?: ThemeBranding
+  assetSource?: AssetSourceConfig
+  userStorage?: UserStorageConfig
+  /** When true, AI generation only allowed inside locked templates */
+  aiBrandTemplateOnly?: boolean
+  openAiApiKey?: string
 }
 
 export interface Viewport {
@@ -194,6 +264,10 @@ export function isShape(el: DesignElement): el is ShapeElement {
     el.type === 'star' ||
     el.type === 'polygon'
   )
+}
+
+export function isPath(el: DesignElement): el is PathElement {
+  return el.type === 'path'
 }
 
 export function isAdopterLocked(el: DesignElement, role: EditorRole): boolean {

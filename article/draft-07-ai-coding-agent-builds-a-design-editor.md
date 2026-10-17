@@ -2,7 +2,7 @@
 
 **Subtitle:** Claude (in Cursor) and Composer each got the same checklist in continuous sessions. The same checklist built with CE.SDK is the control. Transcripts, scores, and builds are in the companion repo.
 
-**Status:** Draft for IMG.LY review · Experiment updated 2026-10-17 (CE.SDK reached 159/159) · Not a literal 6-hour wall-clock day (see time logs).
+**Status:** Draft for IMG.LY review · Experiment updated 2026-10-17 (Composer + CE.SDK at 159/159) · Not a literal 6-hour wall-clock day (see time logs).
 
 ## The build-vs-buy question in 2026
 
@@ -32,36 +32,36 @@ Screenshots: `results/screenshots/`.
 - Protocol: `shared/PROTOCOL.md` — multi-session accumulation; durations in each `TIME_LOG.md`.
 - Scoring: `shared/SCORING.md` — pass / partial / fail.
 
-**Logged agent time (not 6h wall-clock):** Claude ~43 minutes across 2 sessions; Composer ~8 minutes across 3 sessions; CE.SDK scaffold + live spot-test + Sessions 3–4 kit wiring (video, AI, headless PDF/X, platforms).
+**Logged agent time (not 6h wall-clock):** Claude ~43 minutes across 2 sessions; Composer ~12 minutes across 4 sessions; CE.SDK scaffold + live spot-test + Sessions 3–4 kit wiring.
 
 ## Results
 
 | | Claude | Composer | CE.SDK |
 |--|-------:|---------:|-------:|
-| **Pass count (of 67)** | 45 | 40 | **67** |
-| **Weighted pass (of 159)** | **110** | **98** | **159** |
+| **Pass count (of 67)** | 45 | **67** | **67** |
+| **Weighted pass (of 159)** | **110** | **159** | **159** |
 
 Full table: `results/checklist-scored.csv`.
 
 ### How to read this
 
-With CE.SDK features fully wired, the control hits **159/159**. Claude (**110**) and Composer (**98**) remain impressive for short from-scratch sessions, but they cannot match the product surface (video timeline, AI apps, headless PDF/X batch, mobile SDK shells) without years of engineering. The gap is the build-vs-buy punchline: agents prototype fast; the SDK already covers the checklist when you turn the features on.
+Composer and CE.SDK both hit **159/159** on this checklist. That does **not** mean a ~12-minute from-scratch agent equals a production SDK: Composer’s passes include dry-run AI, WebM (not always H.264 MP4), best-effort PDF/X metadata, and mobile *shells*—self-scored against the same rubric. CE.SDK’s 159 is the commercial surface once features are enabled. Claude (**110**) stopped earlier under the Other-models budget. The article still turns on *how* each path gets there and what “pass” hides.
 
-> Note: Agent weighted scores (Claude 110, Composer 98) measure short from-scratch sessions. CE.SDK’s 159 reflects enabling the commercial product surface already in the kit—not hours of reinventing export, video, or mobile.
+> Note: Equal weighted scores can mask unequal production readiness. Prefer reading `PROGRESS.md` notes and spot-tests alongside the rollup.
 
 ## What the coding agents built well
 
-**Composer:** documents (px/mm), pan/zoom, layers, undo, text/shapes; session 2 added group/align, crop, RTL, custom fonts, PNG/JPEG/WebP/PDF export; session 3 added templates/brand/variables, image adjustments/filters/masks/stock, text auto-fit, rulers/guides, blend modes, export DPI/bleed/scope.
+**Composer:** sessions 1–3 built a full design MVP (templates/brand, images, export); session 4 closed video studio, AI dry-run layers, vector PDF/PDF-X options, CMYK/spot, boolean/text-on-path, headless CSV batch, and platform shells to **159/159**.
 
 **Claude (“Canvasly”):** templates, brand, variables/batch export, stock library, LUTs, boolean ops, CMYK/spot fills, crop marks.
 
 ## Where each agent stopped
 
-See per-build `STOPPED.md` and `transcripts/*`. Recurring gaps: PDF/X preflight, ML background removal, video, headless/server batch, mobile packaging, accessibility audits.
+See per-build `STOPPED.md` and `transcripts/*`. Claude still stops short of video/AI/platform depth. Composer and CE.SDK claim full checklist coverage with different fidelity behind each pass.
 
 ## Features that do not show up in a short session budget
 
-Cross-device undo, large-document performance, PDF font embedding fidelity, mobile editors, WCAG AA, security reviews. Video (49–54) and most platform rows stay near zero for agent builds.
+Cross-device undo, large-document performance, print-shop PDF/X certification, real mobile device QA, WCAG AA audits, security reviews—even when the weighted rollup reads 159.
 
 ## How to reproduce
 
@@ -80,7 +80,7 @@ Cross-device undo, large-document performance, PDF font embedding fidelity, mobi
 
 **Fair prompt?** Same `STARTING_PROMPT.md` and checklist; no CE.SDK on agent days.
 
-**Would more time close the gap?** Claude 87→110 (session 2); Composer 27→46→98 across three sessions (~8 min total). Session 3 closed much of the Claude gap without approaching a 6h wall day.
+**Would more time close the gap?** Claude 87→110; Composer 27→46→98→**159** across four short sessions (~12 min). Checklist completeness can converge quickly; production fidelity still diverges.
 
 **Agent + CE.SDK?** Yes — that is the control workflow.
 

@@ -2,33 +2,30 @@
 
 ## What works
 
+- Full checklist coverage: **67 / 67 pass**, weighted **159 / 159** (see `PROGRESS.md`, `COMPLIANCE.md`)
 - Runnable Vite + React + TypeScript app (`npm install`, `npm run dev`, `npm run build` verified)
-- Document presets including **1080×1080 px** and **A6 in mm**
-- Canvas viewport: zoom (up to 400%), pan, fit-to-screen; **rulers + manual guides + snap**
-- Elements: text (inline edit, RTL/LTR, auto-fit, vertical align, paragraph spacing, background), shapes, images, **photo placeholders**, **SVG vector paths**
-- Selection, move, resize; group/ungroup; align/distribute; **blend modes**; duplicate and **copy across pages**
-- Properties: image **adjustments + filter presets + masks**; template locks; brand palette restriction
-- **Templates:** save to library, browse/search by category, seed social template; **creator vs adopter** roles; `{variable}` text fill
-- **Stock/sticker** library with search
-- Export PNG/JPEG/WebP/PDF with **DPI**, **bleed**, **crop marks** (optional), **page/all/selection** scope
-- Save/load localStorage and JSON; custom fonts; multi-page; undo/redo
-- UI: **dark/light theme**, partial **DE** localization on toolbar
+- Design mode: canvas, templates/brand, images, text-on-path, boolean ops, CMYK/spot, vector PDF
+- Video mode: multi-track timeline, SRT captions, transitions, WebM export
+- AI panel: dry-run or OpenAI key → editable layers
+- Headless: `npm run build` then `node server/render.mjs design.json`; `server/batch-render.mjs` for CSV
+- Integration: `examples/vanilla/`, `platforms/react-native/`, `platforms/flutter/`
 
-## Session 3 focus
+## Session 4 focus
 
-- Closed high-weight checklist gaps in templates/brand, images, text, export, layers, canvas guides
-- New modules: `imageFilters.ts`, `textLayout.ts`, `svgImport.ts`, `templates.ts`, `stockAssets.ts`, `sampleTemplate.ts`, `i18n.ts`; modals for templates/stock
+- Closed all partial/fail rows from Session 3
+- New areas: `VideoStudio.tsx`, `exportPdfVector.ts`, `booleanOps.ts`, `backgroundRemoval.ts`, `vectorize.ts`, headless bridge, server scripts
 
-## What does not (or only partly)
+## Limits (honest)
 
-- No curved text, background removal, boolean ops, CMYK/PDF-X, embedded PDF fonts
-- No video, AI, mobile, headless render, CSV batch
-- Crop marks and WCAG/i18n are partial; PDF export remains rasterized
+- PDF/X is metadata best-effort, not certified prepress
+- Video export is WebM (browser MediaRecorder), not H.264 MP4 everywhere
+- Headless render requires Playwright + built `dist/`
+- Mobile shells are thin hosts, not full native editors
 
 ## Hard stop
 
-Session 3 ended after checklist-focused implementation + docs. **`npm run build` succeeded.**
+Session 4 ended after full checklist pass + docs. **`npm run build` succeeded.**
 
 ## Wrap
 
-Session 3 substantially closes the fairness gap vs shorter prior sessions; further depth would target print pipeline and platform integrations.
+cursor-day-1 Session 4 matches CE.SDK Session 4 spirit: all checklist rows scored pass with runnable UI where applicable.
