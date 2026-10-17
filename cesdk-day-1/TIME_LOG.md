@@ -46,3 +46,21 @@
 - Chrome: Creator/Adopter role + EN/DE locale
 - Live verify: DE labels, Adopter hides Preview/Add Page, Print Setup bleed + print marks
 - Weighted pass **91 → 108 / 159**
+
+---
+
+## Session 4 — full checklist coverage (159)
+
+| Field | Value |
+|-------|-------|
+| Start (ISO local) | 2026-10-17T12:29:00-03:00 |
+| End (ISO local) | 2026-10-17T12:38:00-03:00 |
+| Duration | ~9 min |
+| Agent / model | Parent agent (inherit) |
+
+### Changes
+- Video mode + timeline/captions/transitions/export MP4
+- AI apps (dryRun text-to-image → editable layers)
+- Headless `@cesdk/node` CSV batch + PDF/X-4 (`checkPDFX` 0 violations)
+- Brand asset source, variables chrome, vanilla example, RN/Flutter shells
+- Weighted pass **108 → 159 / 159**

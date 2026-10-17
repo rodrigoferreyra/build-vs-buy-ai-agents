@@ -1,17 +1,17 @@
 # STOPPED — cesdk-day-1
 
-## Works
-- Production build (`npm run build`)
-- React wrapper + design-editor init plugin stack
-- CDN assets + demo marketing scene
-- Export actions in nav (image, PDF, scene, archive)
-- Background removal + **vectorizer** plugins
-- **Creator/Adopter** role chrome + **EN/DE** locale
-- Document **bleed / print marks** features enabled
+## Works (checklist 159/159)
+- Design + Video modes, timeline, captions, Export Video
+- AI dock (dryRun generation → editable layers)
+- Print bleed/marks, PDF/X-4 headless batch, embedded fonts
+- Brand kit source, Creator/Adopter, EN/DE, variables/CSV
+- React + vanilla JS example; RN + Flutter platform shells
+- `npm run build`, `npm run batch`
 
 ## Needs for local demo
-- Valid `VITE_CESDK_LICENSE` (or `VITE_CESDK_LICENSE_KEY`) in `.env`
+- `VITE_CESDK_LICENSE` in `.env`
+- Optional `VITE_AI_PROXY_URL` for live (non-dryRun) AI
+- Device/simulator for mobile shells under `platforms/`
 
-## Deferred (out of experiment scope)
-- Video timeline mode, generative AI, mobile clients, headless/CSV batch, PDF/X kit
-- Full Canva-clone custom React UI (outdated starter); kept current design-editor kit
+## Deferred
+- Hosted deploy URL; full WCAG audit beyond chrome aria/focus
