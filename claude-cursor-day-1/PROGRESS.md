@@ -2,7 +2,7 @@
 
 Re-scored by Claude Sonnet 5.5 High (`claude-sonnet-5-5-high`) on 2026-10-16 against `shared/checklist.csv` / `shared/SCORING.md`. Statuses were verified against the **running app** (`npm run dev -- --host 127.0.0.1 --port 5183`) using real UI button clicks, simulated pointer drags and DOM/state inspection through the browser. Earlier self-assessment was not trusted. Not verified: OS-level key typing and native file-picker dialogs (the browser here cannot drive them); in those cases the same code path was called programmatically and is noted.
 
-**Tally after Session 2: 45 pass / 3 partial / 19 fail (of 67). Weighted pass = 110 of 159.** (Session 1: 35 / 6 / 26, weighted 87.) Rows changed in Session 2: 20, 24, 25, 28, 32, 34, 37, 38, 41, 43, 46, 47, 61 – their notes begin with "Session 2". Session-2 rows were checked in the running app (in-IDE browser, scripted via `window.__ed` / `window.__lib`) and PDFs with poppler (`pdfinfo`, `pdftotext`, `pdffonts`, `pdftoppm`); no human click-through of every new panel.
+**Tally after Session 3: 51 pass / 3 partial / 13 fail (of 67). Weighted pass = 123 of 159.** (Session 2: 45 / 3 / 19, weighted 110; Session 1: 35 / 6 / 26, weighted 87.) Rows changed in Session 3: 49–54 – notes begin with "Session 3". Video was implemented by Claude Sonnet 5.5 High; wrap/rescore after that agent hit the Other Models usage limit used scripted verification in the running app (`window.__ed` + dynamic `import('/src/video/…')` on `http://127.0.0.1:5183/`). Session-2 rows unchanged.
 
 | id | status | notes |
 |----|--------|-------|
@@ -54,12 +54,12 @@ Re-scored by Claude Sonnet 5.5 High (`claude-sonnet-5-5-high`) on 2026-10-16 aga
 | 46 | pass | **Session 2.** PDF export option "Crop marks" adds a slug, draws registration-colour marks at the trim corners beyond the bleed and sets TrimBox/BleedBox (verified: MediaBox 645.8×892.4 pt, TrimBox inset 25.26 pt). No colour bars or page info. |
 | 47 | partial | **Session 2.** PDF text is real text (`pdftotext` extracts it) with embedded subsets for bundled (Inter, Playfair, Oswald, Lora, Roboto Mono, Pacifico) and uploaded fonts (`pdffonts`: emb yes). System fonts (Arial, Georgia…) map to non-embedded base-14 faces; RTL, outlined or shadowed text is rasterised. Not PDF/X. |
 | 48 | pass | Export dialog has "This page", "All pages" and "Selection"; selection export ran and produced the file `…-selection.png`. Page-scoped export uses the current page. |
-| 49 | fail | No video. |
-| 50 | fail | No video/audio tracks. |
-| 51 | fail | No video. |
-| 52 | fail | No captions/SRT. |
-| 53 | fail | No transitions. |
-| 54 | fail | No MP4 export. |
+| 49 | pass | **Session 3.** Video Studio timeline: trim clip A out-edge to 1.50 s; split clip B at mid → 3 video clips on Video 1. Drag-edge trim + Split (S) in UI. |
+| 50 | pass | **Session 3.** Default project has Video 1/2 + Music/Audio 2; after smoke test tracks held video×3, music×1 (plus overlay/captions). Sample clips + music from `/samples/*.webm`. |
+| 51 | pass | **Session 3.** Overlay track: `addTextClip` inserted “Hello Video”; sticker buttons + design-page overlays in UI. Text verified in store; stickers present in panel. |
+| 52 | pass | **Session 3.** `setCaptions` from `SAMPLE_SRT` → 3 caption clips; Load .srt / paste / sample buttons in UI. |
+| 53 | pass | **Session 3.** `applyTransition(…, 'crossfade', 0.5)` on second video clip; also dip-black / wipe / slide / zoom in inspector. |
+| 54 | pass | **Session 3.** mediabunny + WebCodecs `exportVideo` → MP4 (AVC + Opus) 640×360 @ 15 fps, 15 frames, ~58 KB in ~0.4 s. UI offers 720p–4K and fps control (export dialog). |
 | 55 | fail | No AI generation. |
 | 56 | fail | No AI result layers. |
 | 57 | fail | No AI. |

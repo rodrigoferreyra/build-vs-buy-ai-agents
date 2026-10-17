@@ -48,7 +48,14 @@ No human QA. Chromium only. Several "pass" ids were exercised by script only, no
 8. Docs: `PROGRESS.md`, `COMPLIANCE.md`, `STOPPED.md`, `TIME_LOG.md`.
 
 ### Result
-Session 1: 35 pass / 6 partial / 26 fail (weighted 87/159) → Session 2: **45 / 3 / 19 (weighted 110/159)**. Improved to pass: 20, 24, 28, 32, 34, 37, 38, 41, 43, 46. Improved fail→partial: 25, 47, 61. Not attempted: 18 text on path, 27 vectorize, 45 PDF/X, video/AI/platform rows.
+Session 1: 35 pass / 6 partial / 26 fail (weighted 87/159) → Session 2: **45 / 3 / 19 (weighted 110/159)**. Improved to pass: 20, 24, 28, 32, 34, 37, 38, 41, 43, 46. Improved fail→partial: 25, 47, 61. Not attempted then: 18 text on path, 27 vectorize, 45 PDF/X, video/AI/platform rows.
+
+## Session 3 (2026-10-17, ~18 min) — video, then wrap
+
+Claude Sonnet 5.5 High built `src/video/*` (Video Studio). User asked to wrap for token budget; agent hit Other Models usage limit mid-wrap. Parent verified and rescored.
+
+### Result
+Session 2 → Session 3: **51 / 3 / 13 (weighted 123/159)**. Pass: 49–54 (trim/split, multi A/V tracks, text overlays, SRT, crossfade, MP4 via mediabunny/WebCodecs). Still open (~36 weight): AI, PDF/X, vectorize, text-on-path, headless/platforms, white-label, asset sources, a11y, i18n strings, partial upgrades.
 
 ### Problems hit and fixes
 - `Record<El['type'], string>` in the layers panel missed the new `vector` type (TS error) → added an icon.

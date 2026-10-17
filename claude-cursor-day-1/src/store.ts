@@ -14,9 +14,11 @@ import {
 import { registerFonts } from './fonts'
 import { parseSvg } from './vector'
 import { booleanOp, type BoolOp } from './boolean'
+import type { VideoProject } from './video/types'
+import { newProject } from './video/engine'
 
-export type LeftTab = 'add' | 'layers' | 'templates' | 'brand'
-export type Dialog = 'new' | 'export' | 'storage' | 'saveTemplate' | null
+export type LeftTab = 'add' | 'layers' | 'templates' | 'brand' | 'ai'
+export type Dialog = 'new' | 'export' | 'storage' | 'saveTemplate' | 'theme' | 'sources' | 'help' | null
 
 export interface State {
   doc: Doc
@@ -38,6 +40,8 @@ export interface State {
   dialog: Dialog
   saveStatus: string
   hoverPart: { elId: string; partId: string } | null
+  mode: 'design' | 'video'
+  locale: string
 }
 
 const STORAGE_KEY = 'canvasly:current'
@@ -76,6 +80,8 @@ let state: State = {
   dialog: null,
   saveStatus: '',
   hoverPart: null,
+  mode: 'design',
+  locale: 'en',
 }
 registerFonts(state.doc.fonts)
 
@@ -371,6 +377,18 @@ export const actions = {
     } catch (e) {
       toast((e as Error).message)
     }
+  },
+
+  /** video studio: edit the timeline project (undoable, saved with the design) */
+  setVideo(fn: (p: VideoProject) => VideoProject, key?: string) {
+    const cur = state.doc.video ?? newProject()
+    const next = fn(cur)
+    if (next === cur && state.doc.video) return
+    commit({ ...state.doc, video: next }, key)
+  },
+  setMode(mode: 'design' | 'video') {
+    if (mode === 'video' && !state.doc.video) commit({ ...state.doc, video: newProject() })
+    setState({ mode, editingId: null })
   },
 
   /* luts, data */

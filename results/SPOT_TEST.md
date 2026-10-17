@@ -52,6 +52,6 @@ Screenshot: `screenshots/cesdk-day-1-editor.png`
 
 | Build | pass | partial | fail | weighted |
 |-------|-----:|--------:|-----:|---------:|
-| Claude | 45 | 3 | 19 | 110 |
+| Claude | 51 | 3 | 13 | 123 |
 | Composer | **67** | **0** | **0** | **159** |
 | CE.SDK | **67** | **0** | **0** | **159** |
