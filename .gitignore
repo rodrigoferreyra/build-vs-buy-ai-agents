@@ -6,5 +6,5 @@ dist/
 .DS_Store
 .vite/
 
-# Article drafts stay local until review
-article/draft-*.md
+# Article copy stays local — do not publish in this repo
+article/
