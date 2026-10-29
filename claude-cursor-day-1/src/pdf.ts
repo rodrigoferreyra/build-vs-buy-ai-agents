@@ -1,4 +1,4 @@
-import { PDFDict, PDFDocument, PDFName, PDFNumber, PDFOperator, StandardFonts, type PDFFont, type PDFPage } from 'pdf-lib'
+import { PDFDict, PDFDocument, PDFHeader, PDFHexString, PDFName, PDFNumber, PDFOperator, PDFString, type PDFFont, type PDFPage } from 'pdf-lib'
 import fontkit from '@pdf-lib/fontkit'
 import type { Doc, El, ImageEl, Page, ShapeEl, TextEl, VectorEl } from './types'
 import { applyVariables, elBounds, shapePath } from './geometry'
@@ -8,6 +8,7 @@ import { parsePathD, transformCmds, type Cmd } from './pathops'
 import { partMatrixToBox, partToPathD } from './vector'
 import { BUNDLED_FONTS } from './fontsBundle'
 import { primaryFamily } from './fonts'
+import { srgbIccProfile } from './icc'
 
 /** Client-side PDF writer (pdf-lib): vector shapes/paths, real text with embedded fonts, raster fallback for the rest. */
 
@@ -21,6 +22,8 @@ export interface PdfOptions {
   bleed: boolean
   cropMarks: boolean
   title?: string
+  /** write a PDF/X-4 file (sRGB output intent, XMP, all fonts embedded, no device CMYK) */
+  pdfx?: boolean
   onProgress?: (done: number, total: number) => void
 }
 
@@ -31,6 +34,11 @@ export interface PdfReport {
   rasterElements: number
   embeddedFonts: string[]
   standardFonts: string[]
+  /** rasterised text that also got an invisible, selectable text layer */
+  textLayers: number
+  /** system fonts replaced by an embedded bundled face */
+  substitutes: string[]
+  pdfx: boolean
 }
 
 const K = 0.75 // px -> pt
@@ -89,7 +97,8 @@ function cmdsToOps(cmds: Cmd[]): PDFOperator[] {
 class Writer {
   pdf!: PDFDocument
   fontCache = new Map<string, Promise<PDFFont | null>>()
-  report: PdfReport = { vectorText: 0, rasterText: 0, vectorShapes: 0, rasterElements: 0, embeddedFonts: [], standardFonts: [] }
+  report: PdfReport = { vectorText: 0, rasterText: 0, vectorShapes: 0, rasterElements: 0, embeddedFonts: [], standardFonts: [], textLayers: 0, substitutes: [], pdfx: false }
+  pdfx = false
   imgCounter = 0
   gsCounter = 0
   spotCounter = 0
@@ -112,18 +121,21 @@ class Writer {
     const italic = el.italic
     const bold = el.fontWeight >= 600
     const custom = doc.fonts.find((c) => c.family === fam)
-    const bundled = BUNDLED_FONTS.find((b) => b.family === fam)
+    let bundled = BUNDLED_FONTS.find((b) => b.family === fam)
+    if (!custom && !bundled) {
+      // system fonts cannot be read from the browser: embed the closest bundled face so every font is embedded
+      const first = el.fontFamily.toLowerCase().split(',')[0].replace(/["']/g, '').trim()
+      const sub = /courier|mono|consol/.test(first) ? 'Roboto Mono' : /times|georgia|palatino|garamond|^serif$|book/.test(first) ? 'Lora' : 'Inter'
+      bundled = BUNDLED_FONTS.find((b) => b.family === sub)!
+      this.note(this.report.substitutes, `${fam} → ${sub}`)
+    }
     let key: string
     if (custom) key = `c|${fam}`
-    else if (bundled) {
-      const avail = Object.keys(bundled.files)
+    else {
+      const avail = Object.keys(bundled!.files)
       const w = avail.some((k) => k.startsWith(bold ? '700' : '400')) ? (bold ? 700 : 400) : 400
       const it = italic && avail.includes(`${w}-1`) ? 1 : 0
-      key = `b|${fam}|${w}-${it}`
-    } else {
-      const first = el.fontFamily.toLowerCase().split(',')[0].replace(/["']/g, '').trim()
-      const std = /courier|mono/.test(first) ? 'Courier' : /times|georgia|palatino|^serif$/.test(first) ? 'Times' : 'Helvetica'
-      key = `s|${std}|${bold ? 1 : 0}${italic ? 1 : 0}`
+      key = `b|${bundled!.family}|${w}-${it}`
     }
     let p = this.fontCache.get(key)
     if (!p) {
@@ -136,23 +148,11 @@ class Writer {
           }
           if (key.startsWith('b|')) {
             const file = key.split('|')[2]
-            const res = await fetch(bundled!.files[file])
-            const font = await this.pdf.embedFont(new Uint8Array(await res.arrayBuffer()), { subset: true })
-            this.note(this.report.embeddedFonts, `${fam} ${file.startsWith('700') ? 'Bold' : 'Regular'}${file.endsWith('-1') ? ' Italic' : ''}`)
+            const font = await this.pdf.embedFont(await fetchBytes(bundled!.files[file]), { subset: true })
+            this.note(this.report.embeddedFonts, `${bundled!.family} ${file.startsWith('700') ? 'Bold' : 'Regular'}${file.endsWith('-1') ? ' Italic' : ''}`)
             return font
           }
-          const [, std, flags] = key.split('|')
-          const b = flags[0] === '1'
-          const i = flags[1] === '1'
-          const name =
-            std === 'Courier'
-              ? b && i ? StandardFonts.CourierBoldOblique : b ? StandardFonts.CourierBold : i ? StandardFonts.CourierOblique : StandardFonts.Courier
-              : std === 'Times'
-                ? b && i ? StandardFonts.TimesRomanBoldItalic : b ? StandardFonts.TimesRomanBold : i ? StandardFonts.TimesRomanItalic : StandardFonts.TimesRoman
-                : b && i ? StandardFonts.HelveticaBoldOblique : b ? StandardFonts.HelveticaBold : i ? StandardFonts.HelveticaOblique : StandardFonts.Helvetica
-          const font = await this.pdf.embedFont(name)
-          this.note(this.report.standardFonts, name)
-          return font
+          return null
         } catch (e) {
           console.warn('PDF font failed', key, e)
           return null
@@ -170,7 +170,8 @@ class Writer {
     return [Op('gs', [key])]
   }
 
-  spot(page: PDFPage, name: string, cmyk: number[]): PDFName {
+  /** Separation colour; in PDF/X (RGB output intent) the alternate space is DeviceRGB instead of DeviceCMYK */
+  spot(page: PDFPage, name: string, cmyk: number[], rgbAlt: number[] | null = null): PDFName {
     const ctx = this.pdf.context
     const res = page.node.normalizedEntries().Resources
     let cs = res.lookupMaybe(PDFName.of('ColorSpace'), PDFDict)
@@ -179,23 +180,27 @@ class Writer {
       res.set(PDFName.of('ColorSpace'), cs)
     }
     const key = PDFName.of('Sep' + this.spotCounter++)
-    const fn = ctx.obj({ FunctionType: 2, Domain: [0, 1], C0: [0, 0, 0, 0], C1: cmyk.map((v) => v / 100), N: 1 })
-    cs.set(key, ctx.obj([PDFName.of('Separation'), PDFName.of(name || 'Spot'), PDFName.of('DeviceCMYK'), fn]))
+    const fn = rgbAlt
+      ? ctx.obj({ FunctionType: 2, Domain: [0, 1], C0: [1, 1, 1], C1: rgbAlt, N: 1 })
+      : ctx.obj({ FunctionType: 2, Domain: [0, 1], C0: [0, 0, 0, 0], C1: cmyk.map((v) => v / 100), N: 1 })
+    cs.set(key, ctx.obj([PDFName.of('Separation'), PDFName.of(name || 'Spot'), PDFName.of(rgbAlt ? 'DeviceRGB' : 'DeviceCMYK'), fn]))
     return key
   }
 
   async embedCanvas(page: PDFPage, canvas: HTMLCanvasElement, jpeg: boolean): Promise<PDFName> {
-    const blob: Blob = await new Promise((res, rej) => canvas.toBlob((b) => (b ? res(b) : rej(new Error('raster failed'))), jpeg ? 'image/jpeg' : 'image/png', 0.92))
-    const bytes = new Uint8Array(await blob.arrayBuffer())
+    const enc = (canvas as unknown as { encode?: (f: string, q?: number) => Promise<Uint8Array> }).encode
+    const bytes = enc
+      ? new Uint8Array(await enc.call(canvas, jpeg ? 'jpeg' : 'png', 92))
+      : new Uint8Array(await (await new Promise<Blob>((res, rej) => canvas.toBlob((b) => (b ? res(b) : rej(new Error('raster failed'))), jpeg ? 'image/jpeg' : 'image/png', 0.92))).arrayBuffer())
     const img = jpeg ? await this.pdf.embedJpg(bytes) : await this.pdf.embedPng(bytes)
     return page.node.newXObject('Im' + this.imgCounter++, img.ref)
   }
 }
 
 function fillOps(w: Writer, page: PDFPage, el: ShapeEl): PDFOperator[] {
-  if (el.colorModel === 'cmyk' && el.cmyk) return [Op('k', el.cmyk.map((v) => v / 100))]
+  if (el.colorModel === 'cmyk' && el.cmyk && !w.pdfx) return [Op('k', el.cmyk.map((v) => v / 100))]
   if (el.colorModel === 'spot' && el.cmyk) {
-    const key = w.spot(page, el.spotName || 'Spot', el.cmyk)
+    const key = w.spot(page, el.spotName || 'Spot', el.cmyk, w.pdfx ? parseHex(el.fill) || [0, 0, 0] : null)
     return [Op('cs', [key]), Op('scn', [1])]
   }
   const rgb = parseHex(el.fill) || [0, 0, 0]
@@ -205,12 +210,16 @@ function fillOps(w: Writer, page: PDFPage, el: ShapeEl): PDFOperator[] {
 export async function buildPdf(specs: PdfSpec[], opts: PdfOptions): Promise<{ bytes: Uint8Array; report: PdfReport }> {
   const w = new Writer()
   await w.init(opts.title)
+  w.pdfx = w.report.pdfx = !!opts.pdfx
   let n = 0
   for (const spec of specs) {
     await writePage(w, spec, opts)
     opts.onProgress?.(++n, specs.length)
   }
-  const bytes = await w.pdf.save({ useObjectStreams: false })
+  if (opts.pdfx) makePdfX4(w.pdf, opts.title || specs[0]?.doc.name || 'Design')
+  const bytes = await w.pdf.save({ useObjectStreams: false, updateFieldAppearances: false })
+  // pdf-lib's writer always emits %PDF-1.7; PDF/X-4 requires <= 1.6 (same length, so xref offsets stay valid)
+  if (opts.pdfx) bytes.set(new TextEncoder().encode('%PDF-1.6'), 0)
   return { bytes, report: w.report }
 }
 
@@ -245,7 +254,7 @@ async function writePage(w: Writer, spec: PdfSpec, opts: PdfOptions) {
   pp.pushOperators(Op('Q'))
 
   if (opts.cropMarks) {
-    const ops: PDFOperator[] = [Op('q'), cm(K, 0, 0, -K, O * K, (Ht - O) * K), Op('K', [1, 1, 1, 1]), Op('w', [0.33])]
+    const ops: PDFOperator[] = [Op('q'), cm(K, 0, 0, -K, O * K, (Ht - O) * K), ...(w.pdfx ? [Op('RG', [0, 0, 0])] : [Op('K', [1, 1, 1, 1])]), Op('w', [0.33])]
     for (const cx of [0, doc.width])
       for (const cy of [0, doc.height]) {
         const sx = cx === 0 ? -1 : 1
@@ -287,9 +296,13 @@ async function writeElement(w: Writer, page: PDFPage, doc: Doc, el: El, opts: Pd
     return
   }
   if (el.type === 'text') {
-    if (await writeText(w, page, doc, el, gs)) return
+    const needsRaster = el.shadow.on || el.flipX || el.flipY || !!el.curve
+    if (!needsRaster && (await writeText(w, page, doc, el, gs))) return
     w.report.rasterText++
-    return rasterElement(w, page, doc, el, opts)
+    await rasterElement(w, page, doc, el, opts)
+    // keep effect text selectable/searchable: invisible real text on top of the raster
+    if (await writeText(w, page, doc, el, [], true)) w.report.textLayers++
+    return
   }
   if (el.type === 'vector') {
     if (el.parts.some((p) => p.fill.startsWith('url(') || p.stroke.startsWith('url('))) return rasterElement(w, page, doc, el, opts)
@@ -330,9 +343,8 @@ function writeVector(w: Writer, page: PDFPage, el: VectorEl, gs: PDFOperator[]) 
   page.pushOperators(...ops)
 }
 
-async function writeText(w: Writer, page: PDFPage, doc: Doc, el: TextEl, gs: PDFOperator[]): Promise<boolean> {
+async function writeText(w: Writer, page: PDFPage, doc: Doc, el: TextEl, gs: PDFOperator[], invisible = false): Promise<boolean> {
   const text = applyVariables(el.text, doc.variables)
-  if (el.strokeWidth > 0 || el.shadow.on || el.flipX || el.flipY) return false
   if (hasRtl(text) || effectiveDir(el, text) === 'rtl') return false
   const font = await w.getFont(doc, el)
   if (!font) return false
@@ -341,6 +353,7 @@ async function writeText(w: Writer, page: PDFPage, doc: Doc, el: TextEl, gs: PDF
   const { ascent, descent } = fontMetrics(el, size)
   const rgb = parseHex(el.color) || [0, 0, 0]
   const fontKey = page.node.newFontDictionary(font.name, font.ref)
+  const outline = el.strokeWidth > 0
   const body: PDFOperator[] = []
   let y = el.valign === 'middle' ? (el.h - layout.height) / 2 : el.valign === 'bottom' ? el.h - layout.height : 0
   try {
@@ -356,23 +369,25 @@ async function writeText(w: Writer, page: PDFPage, doc: Doc, el: TextEl, gs: PDF
         Op('BT'),
         Op('Tf', [fontKey, size]),
         Op('Tc', [el.letterSpacing]),
+        Op('Tr', [invisible ? 3 : outline ? 2 : 0]),
         Op('Tm', [1, 0, 0, -1, x, baseline]),
         PDFOperator.of('Tj' as never, [enc]),
         Op('ET'),
       )
-      if (el.underline) body.push(Op('re', [x, baseline + size * 0.1, lw, Math.max(1, size / 18)]), Op('f'))
+      if (el.underline && !invisible) body.push(Op('re', [x, baseline + size * 0.1, lw, Math.max(1, size / 18)]), Op('f'))
     })
   } catch {
     return false
   }
   const ops: PDFOperator[] = [Op('q'), ...gs, ...localMatrix(el)]
-  if (el.bg) {
+  if (outline) ops.push(Op('RG', parseHex(el.strokeColor) || [0, 0, 0]), Op('w', [el.strokeWidth]), Op('j', [1]))
+  if (el.bg && !invisible) {
     const bg = parseHex(el.bg)
     if (bg) ops.push(Op('q'), Op('rg', bg), Op('re', [0, 0, el.w, el.h]), Op('f'), Op('Q'))
   }
   ops.push(Op('rg', rgb), ...body, Op('Q'))
   page.pushOperators(...ops)
-  w.report.vectorText++
+  if (!invisible) w.report.vectorText++
   return true
 }
 
@@ -397,4 +412,74 @@ async function rasterElement(w: Writer, page: PDFPage, doc: Doc, el: El, opts: P
   await drawElement(ctx, { ...el, opacity: 1, blend: 'normal' }, doc.variables, scale, doc.luts)
   const key = await w.embedCanvas(page, canvas, jpeg)
   page.pushOperators(Op('q'), ...w.gs(page, el.opacity, el.blend), cm(bw, 0, 0, -bh, bx, by + bh), Op('Do', [key]), Op('Q'))
+}
+
+async function fetchBytes(url: string): Promise<Uint8Array> {
+  if (url.startsWith('data:')) return dataUrlBytes(url)
+  const read = (globalThis as { __canvaslyReadUrl?: (u: string) => Promise<Uint8Array> }).__canvaslyReadUrl
+  if (read) return read(url)
+  const res = await fetch(url)
+  return new Uint8Array(await res.arrayBuffer())
+}
+
+const xmlEsc = (s: string) => s.replace(/[<>&"]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' })[c]!)
+
+/** PDF/X-4 (ISO 15930-7): PDF 1.6 header, Info + XMP identification, sRGB output intent, trailer ID. */
+function makePdfX4(pdf: PDFDocument, title: string) {
+  const ctx = pdf.context
+  const now = new Date()
+  now.setMilliseconds(0)
+  pdf.setTitle(title)
+  pdf.setCreationDate(now)
+  pdf.setModificationDate(now)
+  const info = ctx.lookup(ctx.trailerInfo.Info, PDFDict)
+  info.set(PDFName.of('GTS_PDFXVersion'), PDFString.of('PDF/X-4'))
+  info.set(PDFName.of('Trapped'), PDFName.of('False'))
+
+  const hex = () => Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) => b.toString(16).padStart(2, '0')).join('')
+  const docId = hex()
+  ctx.trailerInfo.ID = ctx.obj([PDFHexString.of(docId), PDFHexString.of(docId)])
+
+  const iso = now.toISOString().replace(/\.\d{3}Z$/, 'Z')
+  const uuid = (h: string) => `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`
+  const xmp = `<?xpacket begin="\uFEFF" id="W5M0MpCehiHzreSzNTczkc9d"?>
+<x:xmpmeta xmlns:x="adobe:ns:meta/">
+ <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+  <rdf:Description rdf:about=""
+    xmlns:dc="http://purl.org/dc/elements/1.1/"
+    xmlns:xmp="http://ns.adobe.com/xap/1.0/"
+    xmlns:pdf="http://ns.adobe.com/pdf/1.3/"
+    xmlns:xmpMM="http://ns.adobe.com/xap/1.0/mm/"
+    xmlns:pdfxid="http://www.npes.org/pdfx/ns/id/">
+   <dc:format>application/pdf</dc:format>
+   <dc:title><rdf:Alt><rdf:li xml:lang="x-default">${xmlEsc(title)}</rdf:li></rdf:Alt></dc:title>
+   <xmp:CreateDate>${iso}</xmp:CreateDate>
+   <xmp:ModifyDate>${iso}</xmp:ModifyDate>
+   <xmp:MetadataDate>${iso}</xmp:MetadataDate>
+   <xmp:CreatorTool>Canvasly</xmp:CreatorTool>
+   <pdf:Producer>Canvasly + pdf-lib</pdf:Producer>
+   <pdf:Trapped>False</pdf:Trapped>
+   <xmpMM:DocumentID>uuid:${uuid(docId)}</xmpMM:DocumentID>
+   <xmpMM:InstanceID>uuid:${uuid(hex())}</xmpMM:InstanceID>
+   <xmpMM:VersionID>1</xmpMM:VersionID>
+   <xmpMM:RenditionClass>default</xmpMM:RenditionClass>
+   <pdfxid:GTS_PDFXVersion>PDF/X-4</pdfxid:GTS_PDFXVersion>
+  </rdf:Description>
+ </rdf:RDF>
+</x:xmpmeta>
+<?xpacket end="w"?>`
+  const meta = ctx.stream(new TextEncoder().encode(xmp), { Type: 'Metadata', Subtype: 'XML' })
+  pdf.catalog.set(PDFName.of('Metadata'), ctx.register(meta))
+
+  const icc = ctx.flateStream(srgbIccProfile(), { N: 3 })
+  const intent = ctx.obj({
+    Type: 'OutputIntent',
+    S: 'GTS_PDFX',
+    OutputConditionIdentifier: PDFString.of('sRGB IEC61966-2.1'),
+    OutputCondition: PDFString.of('sRGB IEC61966-2.1 (RGB print workflow)'),
+    RegistryName: PDFString.of('http://www.color.org'),
+    Info: PDFString.of('sRGB IEC61966-2.1'),
+    DestOutputProfile: ctx.register(icc),
+  })
+  pdf.catalog.set(PDFName.of('OutputIntents'), ctx.obj([ctx.register(intent)]))
 }

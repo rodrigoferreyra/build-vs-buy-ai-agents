@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { useStore } from '../store'
 
 export function Section({ title, children, right }: { title: string; children: ReactNode; right?: ReactNode }) {
@@ -14,10 +14,24 @@ export function Section({ title, children, right }: { title: string; children: R
 }
 
 export function Row({ children, label }: { children: ReactNode; label?: string }) {
+  const id = useId()
+  const body = useRef<HTMLDivElement>(null)
+  useLayoutEffect(() => {
+    if (!label) return
+    body.current?.querySelectorAll('input, select, textarea').forEach((c) => {
+      if (!c.getAttribute('aria-label') && !c.getAttribute('aria-labelledby')) c.setAttribute('aria-labelledby', id)
+    })
+  })
   return (
     <div className="row">
-      {label && <label className="row-label">{label}</label>}
-      <div className="row-body">{children}</div>
+      {label && (
+        <label className="row-label" id={id}>
+          {label}
+        </label>
+      )}
+      <div className="row-body" ref={body}>
+        {children}
+      </div>
     </div>
   )
 }
@@ -99,7 +113,16 @@ export function Slider({
           {suffix}
         </span>
       </div>
-      <input type="range" min={min} max={max} step={step} value={value} onChange={(e) => onChange(parseFloat(e.target.value))} />
+      <input
+        type="range"
+        aria-label={label}
+        aria-valuetext={`${Math.round(value * 100) / 100}${suffix}`}
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        onChange={(e) => onChange(parseFloat(e.target.value))}
+      />
     </div>
   )
 }
@@ -140,9 +163,10 @@ export function ColorField({
         </div>
       ) : (
         <div className="cf-inputs">
-          <input type="color" value={norm} onChange={(e) => onChange(e.target.value)} />
+          <input type="color" aria-label={`${label ?? 'Colour'} picker`} value={norm} onChange={(e) => onChange(e.target.value)} />
           <input
             type="text"
+            aria-label={`${label ?? 'Colour'} hex value`}
             className="hex"
             value={value ?? ''}
             placeholder="none"

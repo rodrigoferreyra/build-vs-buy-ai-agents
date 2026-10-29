@@ -1,3 +1,8 @@
 node_modules
 dist
 *.log
+public/lib
+headless/dist
+headless/examples/out
+mobile/android/build
+mobile/android/debug.keystore

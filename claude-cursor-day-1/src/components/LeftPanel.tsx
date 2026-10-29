@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import {
   actions,
+  getState,
   cloneDocForUse,
   currentPage,
   deleteUserTemplate,
@@ -19,6 +20,9 @@ import { addImageFiles, openFilePicker } from '../upload'
 import type { El } from '../types'
 import { Section, Toggle } from './ui'
 import { LayersPanel } from './LayersPanel'
+import { addUrlSource, insertAsset, removeAssetSource, searchSource, useAssetSources, type Asset } from '../assetSources'
+import { useEffect } from 'react'
+import { aiSlots, brandModeActive, generate, isLockedTemplate, loadAiSettings, placeAsLayers, placeInTemplate, saveAiSettings, type AiSettings } from '../ai'
 
 export function LeftPanel() {
   const tab = useStore((s) => s.leftTab)
@@ -28,11 +32,14 @@ export function LeftPanel() {
     { id: 'layers', label: 'Layers', icon: '☰' },
     { id: 'templates', label: 'Templates', icon: '▦' },
     { id: 'brand', label: 'Brand', icon: '◆' },
+    { id: 'ai', label: 'AI', icon: '✦' },
   ]
-  const visible = role === 'adopter' ? tabs.filter((t) => t.id !== 'add' && t.id !== 'templates') : tabs
+  const hide = useStore((s) => s.wl.hide)
+  const visible = (role === 'adopter' ? tabs.filter((t) => t.id !== 'add' && t.id !== 'templates') : tabs).filter((t) => !hide[t.id])
+  if (!visible.length) return null
   const active = visible.some((t) => t.id === tab) ? tab : visible[0].id
   return (
-    <div className="left">
+    <div className="left" role="complementary" aria-label="Add, layers and assets">
       <div className="tabs">
         {visible.map((t) => (
           <button key={t.id} className={active === t.id ? 'on' : ''} onClick={() => actions.set({ leftTab: t.id })}>
@@ -46,6 +53,7 @@ export function LeftPanel() {
         {active === 'layers' && <LayersPanel />}
         {active === 'templates' && <TemplatesTab />}
         {active === 'brand' && <BrandTab />}
+        {active === 'ai' && <AiTab />}
       </div>
     </div>
   )
@@ -87,7 +95,7 @@ function StockLibrary() {
   return (
     <>
       <Section title={`Stock library (${STOCK.length})`}>
-        <input className="search" placeholder="Search backgrounds, icons, patterns…" value={q} onChange={(e) => setQ(e.target.value)} />
+        <input className="search" aria-label="Search stock library" placeholder="Search backgrounds, icons, patterns…" value={q} onChange={(e) => setQ(e.target.value)} />
         <div className="chips">
           {STOCK_CATEGORIES.map((c) => (
             <Toggle key={c} on={cat === c} onClick={() => setCat(c)}>
@@ -107,7 +115,7 @@ function StockLibrary() {
       <Section title="Stock photos (online, optional)">
         <div className="subtle">Searches Openverse (CC-licensed). Only the search words leave your browser, and only when you press Search.</div>
         <div className="btn-row">
-          <input className="search" placeholder="e.g. mountain lake" value={oq} onChange={(e) => setOq(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && search()} />
+          <input className="search" aria-label="Search Openverse photos" placeholder="e.g. mountain lake" value={oq} onChange={(e) => setOq(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && search()} />
           <button disabled={busy || !oq.trim()} onClick={search}>
             {busy ? '…' : 'Search'}
           </button>
@@ -169,8 +177,61 @@ function AddTab() {
         </button>
         <div className="subtle">Tip: drop files on the canvas — dropping onto a frame fills it.</div>
       </Section>
+      <AssetSourcesPanel />
       <StockLibrary />
     </>
+  )
+}
+
+const DEMO_SOURCE = '/asset-sources/demo/manifest.json'
+
+function AssetSourcesPanel() {
+  const sources = useAssetSources()
+  const [url, setUrl] = useState('')
+  const [q, setQ] = useState('')
+  const [results, setResults] = useState<Record<string, Asset[]>>({})
+  useEffect(() => {
+    let alive = true
+    Promise.all(sources.map(async (s) => [s.id, await searchSource(s, q).catch(() => [])] as const)).then((r) => alive && setResults(Object.fromEntries(r)))
+    return () => {
+      alive = false
+    }
+  }, [sources, q])
+  return (
+    <Section title="Your asset sources">
+      <div className="subtle">Plug in your own stock, stickers and fonts: a JSON manifest URL or a public S3/GCS bucket listing URL. Assets are fetched only from the URLs you add.</div>
+      <div className="btn-row">
+        <input className="search" type="url" placeholder="https://bucket.s3.amazonaws.com/ or …/manifest.json" value={url} onChange={(e) => setUrl(e.target.value)} aria-label="Asset source URL" />
+        <button disabled={!url.trim()} onClick={() => { addUrlSource(url.trim()); setUrl('') }}>
+          Add
+        </button>
+      </div>
+      {!sources.length && (
+        <div className="btn-row">
+          <button onClick={() => addUrlSource(DEMO_SOURCE, 'Acme brand assets (demo)')}>Add demo manifest</button>
+          <button onClick={() => addUrlSource('/asset-sources/demo/bucket-listing.xml', 'acme-assets (S3 listing demo)')}>Add demo bucket</button>
+        </div>
+      )}
+      {sources.length > 0 && <input className="search" placeholder="Search your assets…" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search your assets" />}
+      {sources.map((s) => (
+        <div key={s.id} className="asset-source">
+          <div className="asset-source-head">
+            <strong>{s.name}</strong>
+            <span className="subtle">{s.loading ? 'loading…' : s.error ? 'error: ' + s.error : `${results[s.id]?.length ?? 0} assets`}</span>
+            <button className="mini" title="Remove source" aria-label={`Remove source ${s.name}`} onClick={() => removeAssetSource(s.id)}>
+              ✕
+            </button>
+          </div>
+          <div className="sticker-grid">
+            {(results[s.id] || []).map((a) => (
+              <button key={a.id} title={`${a.name} · ${a.type}`} onClick={() => insertAsset(a)} className={'asset asset-' + a.type}>
+                {a.type === 'font' ? <span className="asset-font">Aa<small>{a.family || a.name}</small></span> : <img src={a.thumb || a.url} alt={a.name} loading="lazy" />}
+              </button>
+            ))}
+          </div>
+        </div>
+      ))}
+    </Section>
   )
 }
 
@@ -191,7 +252,7 @@ function TemplatesTab() {
   return (
     <>
       <Section title="Template library">
-        <input className="search" placeholder="Search templates…" value={q} onChange={(e) => setQ(e.target.value)} />
+        <input className="search" aria-label="Search templates" placeholder="Search templates…" value={q} onChange={(e) => setQ(e.target.value)} />
         <div className="chips">
           {cats.map((c) => (
             <Toggle key={c} on={cat === c} onClick={() => setCat(c)}>
@@ -297,7 +358,7 @@ function BrandTab() {
         </div>
         {creator && (
           <div className="btn-row">
-            <input type="color" value={newColor} onChange={(e) => setNewColor(e.target.value)} />
+            <input type="color" aria-label="New brand colour" value={newColor} onChange={(e) => setNewColor(e.target.value)} />
             <button onClick={() => !brand.colors.includes(newColor) && set({ ...brand, colors: [...brand.colors, newColor] })}>Add color</button>
           </div>
         )}
@@ -365,7 +426,7 @@ function BrandFonts({ creator }: { creator: boolean }) {
       {creator && (
         <>
           <div className="btn-row">
-            <select value={pick} onChange={(e) => setPick(e.target.value)}>
+            <select aria-label="Font to add to the brand kit" value={pick} onChange={(e) => setPick(e.target.value)}>
               <option value="">Add an existing font…</option>
               {options.map((o) => (
                 <option key={o.css} value={o.css}>
@@ -439,4 +500,121 @@ function BrandLogos({ creator }: { creator: boolean }) {
       <div className="subtle">Click a logo to insert it (SVG logos become editable vectors). Logos are saved with the design.</div>
     </Section>
   )
+}
+
+function AiTab() {
+  const doc = useStore((s) => s.doc)
+  const role = useStore((s) => s.role)
+  const pageIndex = useStore((s) => s.pageIndex)
+  const [cfg, setCfg] = useState<AiSettings>(loadAiSettings)
+  const [prompt, setPrompt] = useState('')
+  const [withCopy, setWithCopy] = useState(true)
+  const [busy, setBusy] = useState(false)
+  const [last, setLast] = useState('')
+  const brandMode = brandModeActive(doc, role)
+  const locked = isLockedTemplate(doc)
+  const slots = aiSlots(doc, pageIndex)
+  const blocked = brandMode && (!locked || !slots.length)
+  const upd = (p: Partial<AiSettings>) => {
+    const n = { ...cfg, ...p }
+    setCfg(n)
+    saveAiSettings(n)
+  }
+  const run = async () => {
+    if (!prompt.trim()) return
+    setBusy(true)
+    try {
+      const target = brandMode ? slots.find((e) => useSel().includes(e.id)) ?? slots[0] : null
+      const w = target ? target.w : doc.width
+      const h = target ? target.h : doc.height
+      const r = await generate(cfg, prompt.trim(), w, h, withCopy)
+      if (brandMode) {
+        const name = await placeInTemplate(r.src, r.copy, target?.id)
+        setLast(`Filled “${name}”${r.copy ? ' and the {headline}/{tagline} variables' : ''} inside the locked template.`)
+      } else {
+        const n = await placeAsLayers(r.src, r.copy, prompt.trim())
+        setLast(`Added ${n} editable layer${n > 1 ? 's' : ''} – move or edit them in Layers; no new generation needed.`)
+      }
+      toast(r.dry ? 'AI dry run: placeholder image generated offline (no model was called)' : 'AI image generated')
+    } catch (e) {
+      toast('AI generation failed: ' + (e as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <>
+      <Section title="Generate with AI">
+        <label className="row">
+          <span className="row-label">Provider</span>
+          <select value={cfg.provider} onChange={(e) => upd({ provider: e.target.value as AiSettings['provider'] })}>
+            <option value="dryrun">Dry run (offline placeholder, no key)</option>
+            <option value="openai">OpenAI-compatible API (your key)</option>
+          </select>
+        </label>
+        {cfg.provider === 'openai' && (
+          <>
+            <label className="row">
+              <span className="row-label">API key</span>
+              <input type="password" autoComplete="off" value={cfg.apiKey} placeholder="sk-…" onChange={(e) => upd({ apiKey: e.target.value })} />
+            </label>
+            <label className="row">
+              <span className="row-label">Endpoint</span>
+              <input type="url" value={cfg.baseUrl} onChange={(e) => upd({ baseUrl: e.target.value })} />
+            </label>
+            <div className="grid2">
+              <label className="row">
+                <span className="row-label">Image model</span>
+                <input type="text" value={cfg.imageModel} onChange={(e) => upd({ imageModel: e.target.value })} />
+              </label>
+              <label className="row">
+                <span className="row-label">Text model</span>
+                <input type="text" value={cfg.textModel} onChange={(e) => upd({ textModel: e.target.value })} />
+              </label>
+            </div>
+            <label className="check">
+              <input type="checkbox" checked={cfg.rememberKey} onChange={(e) => upd({ rememberKey: e.target.checked })} />
+              Remember key in this browser (otherwise only for this tab session)
+            </label>
+            <div className="subtle">The prompt goes straight from your browser to this endpoint with your key; nothing else is sent.</div>
+          </>
+        )}
+        <textarea aria-label="Prompt" placeholder="e.g. sunlit lemon grove, product shot of a glass bottle, soft morning light" value={prompt} onChange={(e) => setPrompt(e.target.value)} rows={3} />
+        <label className="check">
+          <input type="checkbox" checked={withCopy} onChange={(e) => setWithCopy(e.target.checked)} />
+          Also write headline, tagline and button text
+        </label>
+        <div className="subtle">Brand colours {brandContextLabel(doc)} are added to every prompt.</div>
+        <button className="primary wide" disabled={busy || !prompt.trim() || blocked} onClick={run}>
+          {busy ? 'Generating…' : brandMode ? 'Generate into template slot' : 'Generate as editable layers'}
+        </button>
+        {last && <div className="notice">{last}</div>}
+        {cfg.provider === 'dryrun' && <div className="notice">Dry run: images are drawn locally and stamped “AI DRY RUN”. Pick the OpenAI-compatible provider and paste your key for real generations.</div>}
+      </Section>
+      <Section title="Brand guardrails">
+        <label className="check">
+          <input type="checkbox" checked={!!doc.aiBrandOnly} disabled={role !== 'creator'} onChange={(e) => actions.setDoc({ aiBrandOnly: e.target.checked })} />
+          Limit AI to this brand template (fill open slots only)
+        </label>
+        <div className="subtle">
+          {role === 'adopter' ? 'Adopters can only use AI inside locked brand templates. ' : ''}
+          {brandMode
+            ? locked
+              ? slots.length
+                ? `AI may fill ${slots.length} slot${slots.length > 1 ? 's' : ''}: ${slots.map((s) => s.name).join(', ')}. Locked elements, layout and fonts stay untouched.`
+                : 'This template has no open image slot (empty placeholder, image variable or AI slot).'
+              : 'Open a brand template with locked elements (e.g. Templates → “Brand promo (AI slot)”) to generate.'
+            : 'Free mode: results are added as new layers on the current page.'}
+        </div>
+      </Section>
+    </>
+  )
+}
+
+const useSel = () => getStateSel()
+function getStateSel() {
+  return getState().selection
+}
+function brandContextLabel(doc: { brand: { colors: string[] } }) {
+  return doc.brand.colors.length ? `(${doc.brand.colors.join(', ')})` : '(defaults)'
 }

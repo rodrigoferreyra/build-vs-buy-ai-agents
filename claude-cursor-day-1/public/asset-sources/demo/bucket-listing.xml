@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ListBucketResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
+  <Name>acme-assets</Name><Prefix></Prefix><MaxKeys>1000</MaxKeys><IsTruncated>false</IsTruncated>
+  <Contents><Key>acme-mark.svg</Key><Size>320</Size></Contents>
+  <Contents><Key>badge-new.svg</Key><Size>420</Size></Contents>
+  <Contents><Key>wave-divider.svg</Key><Size>260</Size></Contents>
+  <Contents><Key>mountain-dusk.jpg</Key><Size>20000</Size></Contents>
+  <Contents><Key>acme-serif.woff</Key><Size>30000</Size></Contents>
+  <Contents><Key>manifest.json</Key><Size>900</Size></Contents>
+</ListBucketResult>

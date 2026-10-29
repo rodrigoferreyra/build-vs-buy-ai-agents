@@ -1,6 +1,6 @@
 import type { El, ImageEl, ShapeEl, TextEl, Unit, VectorEl } from '../types'
 import { BLEND_MODES } from '../types'
-import { actions, currentPage, toast, useStore } from '../store'
+import { actions, currentPage, getState, history, toast, useStore } from '../store'
 import { FILTER_PRESETS, findVariables, fromUnit, round, toUnit } from '../geometry'
 import { BUILTIN_FONTS, FONT_WEIGHTS, fontFromFile, fontLabel } from '../fonts'
 import { BUILTIN_LUT_LIST, parseCube } from '../lut'
@@ -251,6 +251,12 @@ function TextSection({ els }: { els: TextEl[] }) {
         <Slider label="Line height" value={f.lineHeight} min={0.6} max={3} step={0.05} onChange={(v) => set({ lineHeight: v })} />
         <Slider label="Letter spacing" value={f.letterSpacing} min={-10} max={60} step={0.5} suffix="px" onChange={(v) => set({ letterSpacing: v })} />
         <Slider label="Paragraph spacing" value={f.paragraphSpacing} min={0} max={120} step={1} suffix="px" onChange={(v) => set({ paragraphSpacing: v })} />
+        <Slider label="Curve (arc)" value={f.curve ?? 0} min={-100} max={100} step={1} onChange={(v) => set({ curve: v || undefined })} />
+        {!!f.curve && (
+          <div className="subtle">
+            Text follows a {Math.round(Math.abs(f.curve) * 3.6)}° arc ({f.curve > 0 ? 'arched up' : 'sagging down'}), one line. Double-click still edits the words.
+          </div>
+        )}
         <label className="check">
           <input type="checkbox" checked={f.autoFit} onChange={(e) => set({ autoFit: e.target.checked })} />
           Auto-fit text to box (shrinks to fit)
@@ -390,6 +396,7 @@ function ImageSection({ els }: { els: ImageEl[] }) {
         <LutPicker f={f} set={set} />
       </Section>
       <BgRemoval f={f} />
+      <Vectorize f={f} />
       <Section title="Variable (template data)">
         <Row label="Image var">
           <input
@@ -734,17 +741,26 @@ function VariablesSection() {
 }
 
 
-/* ---------------- background removal (no ML) ---------------- */
+/* ---------------- background removal ---------------- */
 
 function BgRemoval({ f }: { f: ImageEl }) {
+  const [method, setMethod] = useState<'ai' | 'color'>('ai')
   const [tol, setTol] = useState(40)
   const [feather, setFeather] = useState(1)
-  const [busy, setBusy] = useState(false)
+  const [hardness, setHardness] = useState(40)
+  const [busy, setBusy] = useState('')
   if (!f.src) return null
   const run = async () => {
-    setBusy(true)
+    setBusy('Working…')
     try {
       const base = f.origSrc ?? f.src!
+      if (method === 'ai') {
+        const { removeBackgroundMl } = await import('../bgremoveMl')
+        const r = await removeBackgroundMl(base, { hardness: hardness / 100, onStatus: setBusy })
+        actions.patch([f.id], { src: r.src, nw: r.nw, nh: r.nh, origSrc: base } as Partial<El>)
+        toast(`Background removed on-device in ${(r.ms / 1000).toFixed(1)} s (${Math.round(r.removed * 100)} % transparent)`)
+        return
+      }
       const r = await removeBackground(base, { tolerance: tol, feather })
       if (r.removed < 0.005) toast('Nothing matched the background – raise the tolerance')
       else if (r.removed > 0.98) toast('That removed almost everything – lower the tolerance')
@@ -752,22 +768,92 @@ function BgRemoval({ f }: { f: ImageEl }) {
     } catch (e) {
       toast('Background removal failed: ' + (e as Error).message)
     } finally {
-      setBusy(false)
+      setBusy('')
     }
   }
   return (
     <Section title="Remove background">
-      <Slider label="Tolerance" value={tol} min={6} max={120} onChange={setTol} />
-      <Slider label="Edge feather" value={feather} min={0} max={4} suffix="px" onChange={setFeather} />
+      <div className="seg" role="group" aria-label="Background removal method">
+        <button className={method === 'ai' ? 'on' : ''} aria-pressed={method === 'ai'} onClick={() => setMethod('ai')}>
+          AI segmentation
+        </button>
+        <button className={method === 'color' ? 'on' : ''} aria-pressed={method === 'color'} onClick={() => setMethod('color')}>
+          Colour flood fill
+        </button>
+      </div>
+      {method === 'ai' ? (
+        <Slider label="Edge hardness" value={hardness} min={0} max={100} onChange={setHardness} />
+      ) : (
+        <>
+          <Slider label="Tolerance" value={tol} min={6} max={120} onChange={setTol} />
+          <Slider label="Edge feather" value={feather} min={0} max={4} suffix="px" onChange={setFeather} />
+        </>
+      )}
       <div className="btn-row">
-        <button className="primary" disabled={busy} onClick={run}>
-          {busy ? 'Working…' : f.origSrc ? 'Re-run on original' : 'Remove background'}
+        <button className="primary" disabled={!!busy} onClick={run}>
+          {busy || (f.origSrc ? 'Re-run on original' : 'Remove background')}
         </button>
         {f.origSrc && (
           <button onClick={() => actions.patch([f.id], { src: f.origSrc, origSrc: null } as Partial<El>)}>Restore</button>
         )}
       </div>
-      <div className="subtle">Runs in your browser (no upload, no model): it clears the colour connected to the image border. Best on plain or softly shaded backgrounds.</div>
+      <div className="subtle">
+        {method === 'ai'
+          ? 'Runs a U²-Net segmentation model (4.6 MB, ONNX/WASM) inside your browser – the photo is never uploaded. Works on busy backgrounds.'
+          : 'No model: clears the colour connected to the image border. Best on plain or softly shaded backgrounds.'}
+      </div>
+    </Section>
+  )
+}
+
+/* ---------------- vectorize ---------------- */
+
+function Vectorize({ f }: { f: ImageEl }) {
+  const [colors, setColors] = useState(4)
+  const [detail, setDetail] = useState(60)
+  const [dropBg, setDropBg] = useState(true)
+  const [keep, setKeep] = useState(false)
+  const [busy, setBusy] = useState(false)
+  if (!f.src) return null
+  const run = async () => {
+    setBusy(true)
+    try {
+      const { vectorizeImage } = await import('../vectorize')
+      const r = await vectorizeImage(f.src!, { colors, detail, dropBackground: dropBg })
+      if (!r.paths) return toast('Nothing to trace – try more colours or turn off “Drop background”')
+      const h = f.nw && f.nh ? (f.w * f.nh) / f.nw : f.h
+      history.begin()
+      actions.addSvgText(r.svg, `${f.name} (vector)`, { box: { x: f.x, y: f.y + (f.h - h) / 2, w: f.w, h, rotation: f.rotation } })
+      const vectorSel = getState().selection
+      if (!keep) {
+        actions.select([f.id])
+        actions.deleteSelection()
+        actions.select(vectorSel)
+      }
+      history.end()
+      toast(`Traced ${r.paths} vector paths in ${(r.ms / 1000).toFixed(1)} s – each colour region is an editable part`)
+    } catch (e) {
+      toast('Vectorize failed: ' + (e as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <Section title="Vectorize">
+      <Slider label="Colours" value={colors} min={2} max={16} onChange={setColors} />
+      <Slider label="Detail" value={detail} min={0} max={100} onChange={setDetail} />
+      <label className="check">
+        <input type="checkbox" checked={dropBg} onChange={(e) => setDropBg(e.target.checked)} /> Drop background colour
+      </label>
+      <label className="check">
+        <input type="checkbox" checked={keep} onChange={(e) => setKeep(e.target.checked)} /> Keep original image
+      </label>
+      <div className="btn-row">
+        <button className="primary" disabled={busy} onClick={run}>
+          {busy ? 'Tracing…' : 'Vectorize to paths'}
+        </button>
+      </div>
+      <div className="subtle">Traces the logo into SVG paths (one per colour region) – scale without blur, recolour parts, export as vector PDF.</div>
     </Section>
   )
 }

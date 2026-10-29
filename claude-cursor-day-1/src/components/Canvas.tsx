@@ -409,7 +409,12 @@ export function Canvas() {
             }}
             data-page="1"
           >
-            <div style={{ position: 'absolute', left: bleed, top: bleed }}>
+            <div
+              id="canvas-elements"
+              role="group"
+              aria-label={`Page ${pageIndex + 1}: ${page.elements.length} elements. Tab moves between elements; arrow keys move the selected element, Shift for 10 px; Enter edits text; Delete removes; Escape deselects.`}
+              style={{ position: 'absolute', left: bleed, top: bleed }}
+            >
               {page.elements.map((el) => (
                 <ElementView key={el.id} el={el} vars={doc.variables} editing={editingId === el.id} />
               ))}

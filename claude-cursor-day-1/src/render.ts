@@ -10,7 +10,7 @@ import {
   shapePath,
   unionBounds,
 } from './geometry'
-import { effectiveDir, fitFontSize, fontMetrics, fontString, layoutText } from './textLayout'
+import { arcLayout, effectiveDir, fitFontSize, fontMetrics, fontString, layoutText } from './textLayout'
 import { loadImage } from './imageCache'
 import { lutCanvas } from './lut'
 import { vectorDataUrl } from './vector'
@@ -80,6 +80,25 @@ function drawText(ctx: CanvasRenderingContext2D, el: TextEl, vars: Record<string
     ctx.shadowBlur = el.shadow.blur * scale
     ctx.shadowOffsetX = (el.shadow.x * Math.cos(a) - el.shadow.y * Math.sin(a)) * scale
     ctx.shadowOffsetY = (el.shadow.x * Math.sin(a) + el.shadow.y * Math.cos(a)) * scale
+  }
+  if (el.curve) {
+    ctx.textAlign = 'center'
+    ;(ctx as any).letterSpacing = '0px'
+    for (const g of arcLayout(el, text, size)) {
+      ctx.save()
+      ctx.translate(g.x, g.y)
+      ctx.rotate(g.angle)
+      ctx.fillText(g.ch, 0, 0)
+      if (el.strokeWidth > 0) {
+        ctx.shadowColor = 'transparent'
+        ctx.strokeStyle = el.strokeColor
+        ctx.lineWidth = el.strokeWidth
+        ctx.lineJoin = 'round'
+        ctx.strokeText(g.ch, 0, 0)
+      }
+      ctx.restore()
+    }
+    return
   }
   let y = y0
   layout.lines.forEach((line, i) => {
@@ -196,7 +215,17 @@ export function canvasToBlob(canvas: HTMLCanvasElement, mime: string, quality?: 
   )
 }
 
+/** bridge injected by the Android shell (mobile/android); WebViews cannot save blob: downloads */
+type NativeBridge = { saveFile(name: string, mime: string, base64: string): string }
+
 export function downloadBlob(blob: Blob, filename: string) {
+  const native = (window as unknown as { CanvaslyNative?: NativeBridge }).CanvaslyNative
+  if (native) {
+    const r = new FileReader()
+    r.onload = () => native.saveFile(filename, blob.type || 'application/octet-stream', String(r.result).split(',')[1] ?? '')
+    r.readAsDataURL(blob)
+    return
+  }
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url

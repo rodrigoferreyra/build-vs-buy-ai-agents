@@ -1,0 +1,10 @@
+{
+  "name": "Acme brand assets (demo)",
+  "assets": [
+    { "id": "mark", "type": "svg", "name": "Acme mark", "url": "acme-mark.svg", "tags": ["logo", "brand"] },
+    { "id": "badge", "type": "svg", "name": "New badge", "url": "badge-new.svg", "tags": ["sticker", "badge"] },
+    { "id": "wave", "type": "svg", "name": "Wave divider", "url": "wave-divider.svg", "tags": ["shape", "divider"] },
+    { "id": "dusk", "type": "image", "name": "Mountain at dusk", "url": "mountain-dusk.jpg", "tags": ["photo", "landscape"], "license": "own" },
+    { "id": "serif", "type": "font", "name": "Acme Serif", "family": "Acme Serif", "url": "acme-serif.woff", "tags": ["font"] }
+  ]
+}

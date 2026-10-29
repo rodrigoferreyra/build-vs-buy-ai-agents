@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Plain JS host – Canvasly embed</title>
+    <!-- no framework, no bundler: just the library build -->
+    <link rel="stylesheet" href="/lib/style.css" />
+    <style>
+      html, body { height: 100%; margin: 0; }
+      body { display: flex; flex-direction: column; font-family: system-ui, sans-serif; }
+      #host-bar { display: flex; gap: 8px; align-items: center; padding: 8px 12px; background: #102a43; color: #fff; }
+      #host-bar button { background: #fff; color: #102a43; border: 0; border-radius: 4px; padding: 6px 10px; cursor: pointer; }
+      #host-bar output { margin-left: auto; font-size: 12px; opacity: 0.8; }
+      #editor { flex: 1; min-height: 0; }
+    </style>
+  </head>
+  <body>
+    <div id="host-bar">
+      <strong>Host app (vanilla JS)</strong>
+      <button id="load">Load sample design</button>
+      <button id="png">Export PNG via API</button>
+      <button id="theme">Toggle host theme</button>
+      <button id="lang">DE / EN</button>
+      <output id="log">waiting…</output>
+    </div>
+    <div id="editor"></div>
+    <script type="module">
+      import { mount } from '/lib/canvasly-editor.js'
+
+      const log = (m) => (document.getElementById('log').textContent = m)
+      let changes = 0
+      const editor = mount(document.getElementById('editor'), {
+        whiteLabel: { title: 'Host Editor', colors: { accent: '#0b7285' }, hide: ['video'] },
+        onChange: () => log(`changes from editor: ${++changes}`),
+      })
+      window.hostEditor = editor
+      log('editor mounted')
+
+      document.getElementById('load').onclick = async () => {
+        const doc = editor.getDesign()
+        const page = doc.pages[0]
+        editor.loadDesign({
+          ...doc,
+          name: 'Loaded by host',
+          pages: [{ ...page, background: '#e6fcf5', elements: [] }],
+        })
+        log('sample design loaded')
+      }
+      document.getElementById('png').onclick = async () => {
+        const blob = await editor.exportImage({ dpi: 72 })
+        log(`exported PNG ${blob.size} bytes`)
+        const a = document.createElement('a')
+        a.href = URL.createObjectURL(blob)
+        a.download = 'from-host.png'
+        a.click()
+      }
+      let dark = false
+      document.getElementById('theme').onclick = () => {
+        dark = !dark
+        editor.setWhiteLabel(
+          dark
+            ? { colors: { accent: '#f59f00', bg: '#1b1d23', panel: '#25282f', text: '#eceef3', line: '#3a3e48', muted: '#9aa0ad' } }
+            : { colors: { accent: '#0b7285', bg: '#eceef5', panel: '#ffffff', text: '#1c1d2b', line: '#e1e3ee', muted: '#7a7d93' } },
+        )
+      }
+      document.getElementById('lang').onclick = () => editor.setLocale(editor.getLocale() === 'de' ? 'en' : 'de')
+    </script>
+  </body>
+</html>

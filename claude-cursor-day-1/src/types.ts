@@ -103,6 +103,8 @@ export interface TextEl extends BaseEl {
   shadow: Shadow
   bg: string | null
   direction?: TextDir
+  /** text on an arc: -100..100 (% of a half circle), 0 = straight */
+  curve?: number
 }
 
 export type Mask = 'none' | 'circle' | 'rounded' | 'star' | 'triangle' | 'hexagon'
@@ -132,6 +134,8 @@ export interface ImageEl extends BaseEl {
   variable?: string | null
   /** original pixels kept after background removal so it can be undone */
   origSrc?: string | null
+  /** frame that AI generation may fill in brand-template mode */
+  aiSlot?: boolean
 }
 
 export interface VPart {
@@ -223,6 +227,8 @@ export interface Doc {
   guides: Guide[]
   luts?: LutAsset[]
   data?: DataSource | null
+  /** AI may only fill the open slots of this (locked) template */
+  aiBrandOnly?: boolean
   /** video studio project (timeline) */
   video?: VideoProject
 }

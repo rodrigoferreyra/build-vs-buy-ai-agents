@@ -108,6 +108,48 @@ export function fitFontSize(el: TextEl, text: string): number {
   return Math.floor(lo * 0.98 * 10) / 10
 }
 
+export interface ArcGlyph {
+  ch: string
+  x: number
+  y: number
+  /** radians, clockwise */
+  angle: number
+}
+
+/**
+ * Text on an arc. `curve` -100…100 maps to ±360° of bend; positive arches up (centre below),
+ * negative sags (centre above). One line; glyph centres sit on the baseline circle,
+ * which is vertically centred in the element box.
+ */
+export function arcLayout(el: TextEl, text: string, size: number): ArcGlyph[] {
+  const c = ctx()
+  c.font = fontString(el, size)
+  ;(c as any).letterSpacing = '0px'
+  const chars = [...text.replace(/\s*\n\s*/g, ' ')]
+  const widths = chars.map((ch) => c.measureText(ch).width + el.letterSpacing)
+  const total = widths.reduce((a, b) => a + b, 0)
+  const curve = Math.max(-100, Math.min(100, el.curve ?? 0))
+  if (!total || !curve) return []
+  const theta = (Math.abs(curve) / 100) * Math.PI * 2
+  const R = total / theta
+  const { ascent, descent } = fontMetrics(el, size)
+  const half = Math.min(theta / 2, Math.PI)
+  const sag = R * (1 - Math.cos(half))
+  const height = sag + ascent + descent
+  const top = (el.h - height) / 2
+  const cx = el.w / 2
+  const up = curve > 0
+  const cy = up ? top + ascent + R : top + height - descent - R
+  let s = 0
+  return chars.map((ch, i) => {
+    const a = -theta / 2 + (s + widths[i] / 2) / R
+    s += widths[i]
+    return up
+      ? { ch, x: cx + R * Math.sin(a), y: cy - R * Math.cos(a), angle: a }
+      : { ch, x: cx + R * Math.sin(a), y: cy + R * Math.cos(a), angle: -a }
+  })
+}
+
 export function fontMetrics(el: TextEl, size: number) {
   const c = ctx()
   c.font = fontString(el, size)

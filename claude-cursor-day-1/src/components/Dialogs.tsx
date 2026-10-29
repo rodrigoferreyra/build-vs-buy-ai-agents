@@ -7,6 +7,8 @@ import { buildPdf } from '../pdf'
 import { makeZip } from '../zip'
 import type { Unit } from '../types'
 import { Modal, Num } from './ui'
+import { DEFAULT_WL, HIDE_LABELS, WL_KEY, type HideKey, type WhiteLabel } from '../whitelabel'
+import { openFilePicker } from '../upload'
 
 export function Dialogs() {
   const dialog = useStore((s) => s.dialog)
@@ -15,6 +17,7 @@ export function Dialogs() {
   if (dialog === 'export') return <ExportDialog onClose={close} />
   if (dialog === 'storage') return <StorageDialog onClose={close} />
   if (dialog === 'saveTemplate') return <SaveTemplateDialog onClose={close} />
+  if (dialog === 'theme') return <WhiteLabelDialog onClose={close} />
   return null
 }
 
@@ -100,6 +103,7 @@ function ExportDialog({ onClose }: { onClose: () => void }) {
   const [scope, setScope] = useState<'page' | 'all' | 'selection' | 'rows'>(selection.length ? 'selection' : 'page')
   const [bleed, setBleed] = useState(false)
   const [marks, setMarks] = useState(false)
+  const [pdfx, setPdfx] = useState(false)
   const [oneFile, setOneFile] = useState(true)
   const [quality, setQuality] = useState(92)
   const [busy, setBusy] = useState('')
@@ -138,7 +142,7 @@ function ExportDialog({ onClose }: { onClose: () => void }) {
           const files: { name: string; data: Uint8Array }[] = []
           for (let i = 0; i < jobs.length; i++) {
             setBusy(`PDF ${i + 1}/${jobs.length}…`)
-            const r = await buildPdf([{ doc: jobs[i].d, page: jobs[i].p }], { dpi: Math.max(dpi, 150), bleed, cropMarks: marks, title: base })
+            const r = await buildPdf([{ doc: jobs[i].d, page: jobs[i].p }], { dpi: Math.max(dpi, 150), bleed, cropMarks: marks, title: base, pdfx })
             files.push({ name: `${base}-${jobs[i].label}.pdf`, data: r.bytes })
           }
           downloadBlob(makeZip(files), `${base}-pdfs.zip`)
@@ -149,11 +153,12 @@ function ExportDialog({ onClose }: { onClose: () => void }) {
             bleed,
             cropMarks: marks,
             title: base,
+            pdfx,
             onProgress: (d, t) => setBusy(`Page ${d}/${t}…`),
           })
           dl(r.bytes, `${base}.pdf`)
           const rep = r.report
-          setInfo(`PDF: ${rep.vectorText} text blocks as real text, ${rep.rasterText} rasterised, ${rep.vectorShapes} vector shapes, ${rep.rasterElements} raster layers. Embedded fonts: ${rep.embeddedFonts.join(', ') || 'none'}; base-14: ${rep.standardFonts.join(', ') || 'none'}.`)
+          setInfo(`PDF: ${rep.vectorText} text blocks as real text, ${rep.rasterText} rasterised, ${rep.vectorShapes} vector shapes, ${rep.rasterElements} raster layers. ${rep.textLayers} effect text blocks kept selectable. Embedded fonts: ${rep.embeddedFonts.join(', ') || 'none'}${rep.substitutes.length ? ` (system fonts substituted: ${rep.substitutes.join(', ')})` : ''}.${rep.pdfx ? ' PDF/X-4 with sRGB output intent.' : ''}`)
           toast(`PDF exported (${(r.bytes.length / 1024).toFixed(0)} KB)`)
         }
         if (effScope !== 'rows') return
@@ -257,6 +262,12 @@ function ExportDialog({ onClose }: { onClose: () => void }) {
             Crop marks (adds a slug area; sets TrimBox / BleedBox)
           </label>
         )}
+        {pdf && (
+          <label className="check">
+            <input type="checkbox" checked={pdfx} onChange={(e) => setPdfx(e.target.checked)} />
+            PDF/X-4 (print standard: sRGB output intent, XMP, all fonts embedded)
+          </label>
+        )}
         {pdf && effScope === 'rows' && (
           <label className="check">
             <input type="checkbox" checked={oneFile} onChange={(e) => setOneFile(e.target.checked)} />
@@ -265,7 +276,9 @@ function ExportDialog({ onClose }: { onClose: () => void }) {
         )}
         <div className="subtle">
           {pdf
-            ? 'PDF: vector shapes and paths, real selectable text (bundled/custom fonts embedded), CMYK / spot fills, raster only for images and effects. RGB output – not PDF/X.'
+            ? pdfx
+              ? 'PDF/X-4: PDF 1.6, GTS_PDFXVersion in Info + XMP, embedded sRGB ICC output intent, TrimBox/BleedBox, every font embedded. CMYK fills are converted to RGB; spot colours stay as Separations (DeviceRGB alternate).'
+              : 'PDF: vector shapes and paths, real selectable text with every font embedded (system fonts get a bundled substitute), CMYK / spot fills, raster only for images and effects.'
             : `Output: ${effScope === 'selection' ? 'selection bounds' : `${pw} × ${ph} px`} · everything is rendered locally in your browser.`}
         </div>
         {info && <div className="notice">{info}</div>}
@@ -358,6 +371,95 @@ function SaveTemplateDialog({ onClose }: { onClose: () => void }) {
         >
           Save template
         </button>
+      </div>
+    </Modal>
+  )
+}
+
+function WhiteLabelDialog({ onClose }: { onClose: () => void }) {
+  const wl = useStore((s) => s.wl)
+  const [json, setJson] = useState('')
+  const set = (p: Parameters<typeof actions.setWhiteLabel>[0]) => actions.setWhiteLabel(p)
+  const colorKeys = Object.keys(wl.colors) as (keyof WhiteLabel['colors'])[]
+  const uploadLogo = () =>
+    openFilePicker('image/*,.svg', false, (files) => {
+      const r = new FileReader()
+      r.onload = () => set({ logoUrl: String(r.result) })
+      r.readAsDataURL(files[0])
+    })
+  return (
+    <Modal title="White-label the editor" onClose={onClose} wide>
+      <div className="form wl-form">
+        <p className="subtle">
+          Rebrand the editor UI for your product: title, logo, colours and which panels are shown. Saved in this browser; embedders pass the same object to <code>mount(el, {'{ whiteLabel }'})</code>.
+        </p>
+        <label className="row">
+          <span className="row-label">Title</span>
+          <input type="text" value={wl.title} onChange={(e) => set({ title: e.target.value })} placeholder="(no title)" />
+        </label>
+        <div className="row">
+          <span className="row-label">Logo</span>
+          <div className="btn-row">
+            {wl.logoUrl && <img src={wl.logoUrl} alt="Current logo" style={{ height: 28, maxWidth: 120, objectFit: 'contain' }} />}
+            <button onClick={uploadLogo}>Upload logo…</button>
+            <input type="url" placeholder="or logo URL" value={wl.logoUrl && !wl.logoUrl.startsWith('data:') ? wl.logoUrl : ''} onChange={(e) => set({ logoUrl: e.target.value || null })} />
+            {wl.logoUrl && <button onClick={() => set({ logoUrl: null })}>Remove</button>}
+          </div>
+        </div>
+        <h4>Colours</h4>
+        <div className="color-grid">
+          {colorKeys.map((k) => (
+            <label key={k}>
+              {k}
+              <input type="color" value={wl.colors[k]} onChange={(e) => set({ colors: { [k]: e.target.value } })} />
+            </label>
+          ))}
+        </div>
+        <div className="btn-row">
+          <button onClick={() => set({ colors: { accent: '#0b7285', bg: '#e6f2f4', panel: '#ffffff', text: '#0b2a31', line: '#c9e1e5', muted: '#5c7c83' } })}>Teal preset</button>
+          <button onClick={() => set({ colors: { accent: '#f59f00', bg: '#1b1d23', panel: '#25282f', text: '#eceef3', line: '#3a3e48', muted: '#9aa0ad' } })}>Dark preset</button>
+          <button onClick={() => set({ colors: DEFAULT_WL.colors })}>Default colours</button>
+        </div>
+        <h4>Hide panels and controls</h4>
+        <div className="hide-grid">
+          {(Object.keys(HIDE_LABELS) as HideKey[]).map((k) => (
+            <label key={k} className="check">
+              <input type="checkbox" checked={wl.hide[k]} onChange={(e) => set({ hide: { [k]: e.target.checked } })} />
+              {HIDE_LABELS[k]}
+            </label>
+          ))}
+        </div>
+        {wl.hide.settings && <div className="notice">The ⚙ button is hidden. Re-open this dialog with the URL parameter <code>?whitelabel</code> or reset via the embed API.</div>}
+        <h4>Config JSON</h4>
+        <textarea value={json || JSON.stringify(wl, null, 1)} onChange={(e) => setJson(e.target.value)} aria-label="White-label configuration JSON" />
+        <div className="btn-row">
+          <button
+            disabled={!json}
+            onClick={() => {
+              try {
+                set(JSON.parse(json))
+                setJson('')
+                toast('White-label config applied')
+              } catch {
+                toast('Invalid JSON')
+              }
+            }}
+          >
+            Apply JSON
+          </button>
+          <button
+            onClick={() => {
+              localStorage.removeItem(WL_KEY)
+              actions.setWhiteLabel(DEFAULT_WL, false)
+              setJson('')
+            }}
+          >
+            Reset to default
+          </button>
+          <button className="primary" onClick={onClose}>
+            Done
+          </button>
+        </div>
       </div>
     </Modal>
   )

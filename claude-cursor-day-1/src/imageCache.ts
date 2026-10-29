@@ -2,6 +2,11 @@ const imgCache = new Map<string, Promise<HTMLImageElement>>()
 
 export function loadImage(src: string): Promise<HTMLImageElement> {
   let p = imgCache.get(src)
+  const hook = (globalThis as { __canvaslyLoadImage?: (src: string) => Promise<HTMLImageElement> }).__canvaslyLoadImage
+  if (!p && hook) {
+    p = hook(src)
+    imgCache.set(src, p)
+  }
   if (!p) {
     p = new Promise((resolve, reject) => {
       const img = new Image()

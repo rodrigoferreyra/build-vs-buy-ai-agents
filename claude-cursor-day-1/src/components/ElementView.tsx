@@ -1,7 +1,7 @@
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import type { Doc, El, ImageEl, ShapeEl, TextEl, VectorEl } from '../types'
 import { applyVariables, cssFilter, gradientLine, imageRect, maskPath, shapePath } from '../geometry'
-import { effectiveDir, fitFontSize } from '../textLayout'
+import { arcLayout, effectiveDir, fitFontSize } from '../textLayout'
 import { actions, useStore } from '../store'
 import { imageDims, knownDims } from '../imageCache'
 import { lutObjectUrl } from '../lut'
@@ -106,10 +106,40 @@ function TextView({ el, vars, editing }: { el: TextEl; vars: Record<string, stri
           }}
           onKeyDown={(e) => {
             e.stopPropagation()
-            if (e.key === 'Escape') (e.currentTarget as HTMLElement).blur()
+            if (e.key === 'Escape') {
+              const host = e.currentTarget.closest<HTMLElement>('[data-el-id]')
+              e.currentTarget.blur()
+              setTimeout(() => host?.focus({ preventScroll: true }), 0)
+            }
           }}
         />
       </div>
+    )
+  }
+  if (el.curve) {
+    const glyphs = arcLayout(el, display, size)
+    return (
+      <svg width={el.w} height={el.h} style={{ overflow: 'visible', display: 'block', pointerEvents: 'none', background: el.bg ?? undefined }} data-tick={tick} aria-label={display} role="img">
+        <g
+          fill={el.color}
+          stroke={el.strokeWidth > 0 ? el.strokeColor : 'none'}
+          strokeWidth={el.strokeWidth}
+          strokeLinejoin="round"
+          paintOrder="fill"
+          fontFamily={el.fontFamily}
+          fontSize={size}
+          fontWeight={el.fontWeight}
+          fontStyle={el.italic ? 'italic' : 'normal'}
+          textAnchor="middle"
+          style={{ filter: el.shadow.on ? `drop-shadow(${el.shadow.x}px ${el.shadow.y}px ${el.shadow.blur / 2}px ${el.shadow.color})` : undefined }}
+        >
+          {glyphs.map((g, i) => (
+            <text key={i} transform={`translate(${g.x} ${g.y}) rotate(${(g.angle * 180) / Math.PI})`} style={{ whiteSpace: 'pre' }}>
+              {g.ch}
+            </text>
+          ))}
+        </g>
+      </svg>
     )
   }
   const paras = display.split('\n')
@@ -211,7 +241,16 @@ interface Props {
   editing: boolean
 }
 
+const TYPE_LABEL: Record<El['type'], string> = { text: 'Text', image: 'Image', shape: 'Shape', vector: 'Vector graphic' }
+
+export function describeEl(el: El, vars: Record<string, string>) {
+  const what = el.type === 'text' ? `“${applyVariables(el.text, vars).slice(0, 80)}”` : el.name
+  const shape = el.type === 'shape' ? ` ${el.shape}` : ''
+  return `${TYPE_LABEL[el.type]}${shape}: ${what}${el.locked ? ', locked' : ''}`
+}
+
 export const ElementView = memo(function ElementView({ el, vars, editing }: Props) {
+  const selected = useStore((s) => s.selection.includes(el.id))
   const style: CSSProperties = {
     position: 'absolute',
     left: el.x,
@@ -230,8 +269,20 @@ export const ElementView = memo(function ElementView({ el, vars, editing }: Prop
     transform: el.flipX || el.flipY ? `scale(${el.flipX ? -1 : 1}, ${el.flipY ? -1 : 1})` : undefined,
   }
   return (
-    <div style={style} data-el-id={el.id} data-type={el.type}>
-      <div style={inner}>
+    <div
+      style={style}
+      data-el-id={el.id}
+      data-type={el.type}
+      className="el"
+      tabIndex={el.hidden ? -1 : 0}
+      role="button"
+      aria-pressed={selected}
+      aria-label={describeEl(el, vars)}
+      onFocus={(e) => {
+        if (e.target === e.currentTarget && !selected) actions.select([el.id])
+      }}
+    >
+      <div style={inner} aria-hidden={!editing}>
         {el.type === 'shape' && <ShapeView el={el} />}
         {el.type === 'text' && <TextView el={el} vars={vars} editing={editing} />}
         {el.type === 'image' && <ImageView el={el} vars={vars} />}

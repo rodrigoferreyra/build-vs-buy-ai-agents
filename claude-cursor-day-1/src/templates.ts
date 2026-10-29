@@ -92,6 +92,23 @@ function badge(): Doc {
   return d
 }
 
+function aiPromo(): Doc {
+  const d = makeDoc(1080, 1350, 'px', 'Brand promo (AI slot)')
+  d.pages[0].background = '#ffffff'
+  d.brand = { colors: ['#0b7285', '#f59f00', '#102a43'], restrict: true }
+  d.aiBrandOnly = true
+  d.variables = { headline: 'Summer collection', tagline: 'Fresh looks for warm days' }
+  const photo = makeImage(0, 0, 1080, 860, null, 0, 0, { name: 'AI photo slot', aiSlot: true })
+  const band = makeShape('rect', 0, 860, 1080, 490, { fill: '#102a43', locked: true, name: 'Brand band (locked)' })
+  const logo = makeShape('star', 900, 1180, 120, 120, { fill: '#f59f00', locked: true, name: 'Logo (locked)' })
+  const head = makeText(70, 920, 940, '{headline}', { fontSize: 96, fontWeight: 800, color: '#ffffff', autoFit: true, locked: true, name: 'Headline (locked style)' })
+  head.h = 200
+  const tag = makeText(70, 1140, 780, '{tagline}', { fontSize: 44, color: '#f59f00', autoFit: true, locked: true, name: 'Tagline (locked style)' })
+  tag.h = 120
+  d.pages[0].elements = [photo, band, logo, head, tag]
+  return d
+}
+
 function quote(): Doc {
   const d = makeDoc(1080, 1080, 'px', 'Quote card')
   d.pages[0].background = '#fff4e6'
@@ -161,6 +178,7 @@ function businessCard(): Doc {
 
 export const BUILTIN_TEMPLATES: Template[] = [
   { id: 'b-badge', name: 'Name badge (variables + locked)', category: 'Marketing', doc: badge(), builtin: true },
+  { id: 'b-aipromo', name: 'Brand promo (AI slot)', category: 'Marketing', doc: aiPromo(), builtin: true },
   { id: 'b-quote', name: 'Quote card', category: 'Social', doc: quote(), builtin: true },
   { id: 'b-photo', name: 'Photo post 4:5', category: 'Social', doc: photoCard(), builtin: true },
   { id: 'b-poster', name: 'A5 poster with bleed', category: 'Print', doc: poster(), builtin: true },

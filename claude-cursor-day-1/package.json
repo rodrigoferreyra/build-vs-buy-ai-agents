@@ -5,8 +5,12 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit && vite build",
-    "preview": "vite preview"
+    "build": "tsc --noEmit && vite build -c vite.lib.config.ts && vite build",
+    "preview": "vite preview",
+    "build:lib": "vite build -c vite.lib.config.ts",
+    "build:headless": "node headless/build.mjs",
+    "render": "node headless/dist/canvasly-render.mjs",
+    "build:android": "npm run build && bash mobile/android/build.sh"
   },
   "dependencies": {
     "@fontsource/inter": "^5.3.0",

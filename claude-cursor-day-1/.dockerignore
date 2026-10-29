@@ -1,0 +1,6 @@
+node_modules
+dist
+public
+headless/dist
+headless/examples/out
+*.log

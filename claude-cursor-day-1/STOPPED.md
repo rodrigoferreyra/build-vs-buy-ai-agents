@@ -82,3 +82,38 @@ Claude Sonnet 5.5 High built the Video Studio; Other Models usage limit hit duri
 
 ## Wrap
 Session 3 stopped on user wrap + model quota. Score **123 / 159**. Further sessions optional.
+
+---
+
+# Session 4 (2026-10-29) – toward 159
+
+Ran as **Claude Opus 5.5** in Cursor (Claude Sonnet 5.5 High was requested; recorded honestly in `TIME_LOG.md`). No CE.SDK / `@cesdk/*` / `@imgly/*`, no IMG.LY skills or docs MCP, no code from sibling repos. `npm run build` (`tsc --noEmit && vite build -c vite.lib.config.ts && vite build`) passes; only the chunk-size warning remains.
+
+## Added (all re-scored in `PROGRESS.md`, notes start with "Session 4")
+- **PDF/X-4** (row 45): `%PDF-1.6`, GTS_PDFX output intent with an sRGB ICC profile generated in code (`src/icc.ts`), XMP, trailer ID, every font embedded (system fonts → bundled substitutes), CMYK → RGB in X mode. Checked with `pdfinfo`/`pdffonts`/`pdftotext` + LittleCMS.
+- **Effect text stays searchable** in PDF (invisible text layer over rasterised shadow/flip/curved text).
+- **White-label** (row 58): ⚙ dialog / config JSON – title, logo, 6 colours, presets, 14 hide switches; CSS variables on the editor root.
+- **Embedding** (row 60): `mount()` API + `<canvasly-editor>` custom element, library build in `public/lib`, plain-JS and web-component host pages.
+- **Headless renderer + Docker** (rows 61/62): same renderer in Node via `@napi-rs/canvas` (`npm run build:headless`, `canvasly-render` CLI; PNG/JPEG/WebP/PDF/PDF-X, CSV batch); multi-stage Docker image (267 MB), 100 badges in 3.8 s.
+- **ML background removal** (row 25): U²-Net-p via onnxruntime-web WASM, on-device, IoU 0.99 on a busy background.
+- **Custom asset sources** (row 63): JSON manifest or S3/GCS bucket listing URL + programmatic `search()` sources; SVG, images and fonts.
+- **German UI** (row 64): language switcher, ~330 strings + patterns; canvas content untouched.
+- **AI** (rows 55–57): ✦ AI tab – dry-run or any OpenAI-compatible API with the user's key; result as separate editable layers (one undo step); brand mode only fills "AI slot" images + `{headline}`/`{tagline}` in locked templates. Built-in template "Brand promo (AI slot)".
+- **Vectorize** (row 27): imagetracerjs + k-means palette → editable vector parts, vector-only PDF.
+- **Text on an arc** (row 18): "Curve (arc)" slider, identical in editor, PNG, PDF and headless.
+- **Accessibility** (row 65): focusable canvas elements with spoken names, keyboard move/edit/delete, live announcements, skip link, landmarks, contrast + labels fixed; axe-core WCAG 2.1 AA = 0 violations in 10 states.
+- **Mobile / Android** (row 59): WebView app in `mobile/android/` (no Gradle; `npm run build:android` → signed APK) bundling the same editor, opening `.json` designs via Share / Open with, saving exports to the app's Downloads; phone layout for ≤ 760 px. Verified on an Android 14 emulator: the same badge design opened, was edited, and exported a PNG on the device.
+
+## Score
+**Weighted pass = 159 / 159** (67 pass / 0 partial / 0 fail). **Remaining weight: 0.** (Session start: 123 / 159.)
+
+## Still open / be skeptical
+- Android: verified only in an emulator (Android 14, WebView Chrome 113), not on a physical phone; the design was handed over via the Share intent. "Open with" from the Files app was not exercised. No iOS / React Native / Flutter build. The Android SDK used for the build lives in `~/Android/Sdk` (emulator) and `/tmp/asdk` (build tools); `build.sh` reads `ANDROID_HOME`.
+- Phone layout is usable but desktop-first: the top bar scrolls horizontally, there is no pinch-zoom, and handles are small for touch.
+- AI: only verified against a local OpenAI-compatible mock server and the dry-run generator – not against the real OpenAI service. Generated copy quality depends on the provider.
+- Accessibility: keyboard flow was verified with DOM focus + key events because the automation browser had no OS focus; no real screen reader (NVDA/VoiceOver/TalkBack) was used.
+- Curved text: single line only; rasterised in PDF (with invisible searchable text); kerning pairs are not applied per glyph.
+- Vectorize: anti-aliased edges become thin extra parts; photos produce many paths.
+- German: Video Studio only partly translated.
+- Headless: Node/Skia text metrics differ slightly from Chromium (< 1 % pixel diff on the test badge).
+- `window.__ed` / `window.__lib` debug hooks are still exposed in `main.tsx`.

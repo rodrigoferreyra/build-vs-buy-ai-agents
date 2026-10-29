@@ -16,6 +16,8 @@ import { parseSvg } from './vector'
 import { booleanOp, type BoolOp } from './boolean'
 import type { VideoProject } from './video/types'
 import { newProject } from './video/engine'
+import { getLocale } from './i18n'
+import { loadWL, mergeWL, saveWL, type WhiteLabel, type WhiteLabelInput } from './whitelabel'
 
 export type LeftTab = 'add' | 'layers' | 'templates' | 'brand' | 'ai'
 export type Dialog = 'new' | 'export' | 'storage' | 'saveTemplate' | 'theme' | 'sources' | 'help' | null
@@ -42,6 +44,7 @@ export interface State {
   hoverPart: { elId: string; partId: string } | null
   mode: 'design' | 'video'
   locale: string
+  wl: WhiteLabel
 }
 
 const STORAGE_KEY = 'canvasly:current'
@@ -81,7 +84,8 @@ let state: State = {
   saveStatus: '',
   hoverPart: null,
   mode: 'design',
-  locale: 'en',
+  locale: getLocale(),
+  wl: loadWL(),
 }
 registerFonts(state.doc.fonts)
 
@@ -298,23 +302,23 @@ export const actions = {
   },
 
   /** import SVG markup as an editable vector (parts stay selectable / recolourable) */
-  addSvgText(text: string, name = 'Vector', opts: { maxFrac?: number; cover?: boolean } = {}) {
+  addSvgText(text: string, name = 'Vector', opts: { maxFrac?: number; cover?: boolean; box?: { x: number; y: number; w: number; h: number; rotation: number } } = {}) {
     if (state.role === 'adopter') return
     const parsed = parseSvg(text)
     const { width: W, height: H } = state.doc
     const [, , vw, vh] = parsed.viewBox
     const k = Math.min((W * (opts.maxFrac ?? 0.5)) / vw, (H * (opts.maxFrac ?? 0.5)) / vh)
-    const w = opts.cover ? W : round(vw * k)
-    const h = opts.cover ? H : round(vh * k)
+    const w = opts.box ? opts.box.w : opts.cover ? W : round(vw * k)
+    const h = opts.box ? opts.box.h : opts.cover ? H : round(vh * k)
     const el: VectorEl = {
       id: uid('el'),
       type: 'vector',
       name,
-      x: opts.cover ? 0 : round((W - w) / 2),
-      y: opts.cover ? 0 : round((H - h) / 2),
+      x: opts.box ? opts.box.x : opts.cover ? 0 : round((W - w) / 2),
+      y: opts.box ? opts.box.y : opts.cover ? 0 : round((H - h) / 2),
       w,
       h,
-      rotation: 0,
+      rotation: opts.box?.rotation ?? 0,
       opacity: 1,
       blend: 'normal',
       hidden: false,
@@ -632,6 +636,14 @@ export const actions = {
   },
   newDoc(width: number, height: number, unit: Doc['unit'], name = 'Untitled design') {
     actions.loadDoc(makeDoc(width, height, unit, name))
+  },
+
+  /** white-label the editor UI (title, logo, colours, hidden panels); `persist` keeps it in this browser */
+  setWhiteLabel(p: WhiteLabelInput, persist = true) {
+    const wl = mergeWL(state.wl, p)
+    setState({ wl })
+    if (persist) saveWL(wl)
+    if (typeof document !== 'undefined' && document.title.length) document.title = `${wl.title} – design editor`
   },
 }
 

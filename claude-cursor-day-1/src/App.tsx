@@ -1,5 +1,6 @@
-import { useEffect } from 'react'
-import { actions, fitToScreen, getState, history, saveLocal, subscribe, useStore, zoomAt } from './store'
+import { useEffect, useRef, useState } from 'react'
+import { actions, fitToScreen, getState, history, saveLocal, subscribe, toast, useStore, zoomAt } from './store'
+import { describeEl } from './components/ElementView'
 import { TopBar } from './components/TopBar'
 import { LeftPanel } from './components/LeftPanel'
 import { Canvas } from './components/Canvas'
@@ -8,6 +9,15 @@ import { PagesBar } from './components/PagesBar'
 import { Dialogs } from './components/Dialogs'
 import { addImageFiles } from './upload'
 import { VideoStudio } from './video/VideoStudio'
+import { wlStyle } from './whitelabel'
+import { translateDom } from './i18n'
+
+function skipToCanvas(e: React.MouseEvent) {
+  e.preventDefault()
+  const first = document.querySelector<HTMLElement>('#canvas-elements [data-el-id]:not([tabindex="-1"])')
+  if (first) first.focus({ preventScroll: true })
+  else toast('The page is empty – add an element from the left panel first')
+}
 
 function isTyping(t: EventTarget | null) {
   const el = t as HTMLElement | null
@@ -127,31 +137,104 @@ function useAutosave() {
   }, [])
 }
 
+/** screen-reader narration of selection and keyboard moves (polite live region) */
+function useAnnouncer() {
+  const [msg, setMsg] = useState('')
+  useEffect(() => {
+    let lastSel = ''
+    let lastPos = ''
+    let t: number | undefined
+    const say = (m: string) => {
+      window.clearTimeout(t)
+      t = window.setTimeout(() => setMsg(m), 150)
+    }
+    const unsub = subscribe(() => {
+      const s = getState()
+      if (s.mode === 'video') return
+      const els = s.doc.pages[s.pageIndex]?.elements ?? []
+      const sel = els.filter((e) => s.selection.includes(e.id))
+      const selKey = s.selection.join(',')
+      const pos = sel.map((e) => `${Math.round(e.x)},${Math.round(e.y)},${Math.round(e.w)},${Math.round(e.h)}`).join(';')
+      if (selKey !== lastSel) {
+        lastSel = selKey
+        lastPos = pos
+        if (!sel.length) return say('Selection cleared')
+        if (sel.length > 1) return say(`${sel.length} elements selected`)
+        const e = sel[0]
+        const hint = e.type === 'text' && !e.locked ? ' Enter to edit text.' : ''
+        return say(`Selected ${describeEl(e, s.doc.variables)}. Position ${Math.round(e.x)}, ${Math.round(e.y)}; size ${Math.round(e.w)} by ${Math.round(e.h)}.${hint}`)
+      }
+      if (pos !== lastPos && sel.length) {
+        lastPos = pos
+        const e = sel[0]
+        say(sel.length === 1 ? `Moved to ${Math.round(e.x)}, ${Math.round(e.y)}; size ${Math.round(e.w)} by ${Math.round(e.h)}` : `${sel.length} elements moved`)
+      }
+    })
+    return () => {
+      unsub()
+      window.clearTimeout(t)
+    }
+  }, [])
+  return msg
+}
+
 export default function App() {
   useHotkeys()
   useAutosave()
+  const announcement = useAnnouncer()
   const toastMsg = useStore((s) => s.toast)
   const role = useStore((s) => s.role)
   const mode = useStore((s) => s.mode)
+  const wl = useStore((s) => s.wl)
+  const rootRef = useRef<HTMLDivElement>(null)
+  const [sheet, setSheet] = useState<'left' | 'right' | null>(null)
+  const toggleSheet = (s: 'left' | 'right') => setSheet((cur) => (cur === s ? null : s))
+  useEffect(() => (rootRef.current ? translateDom(rootRef.current) : undefined), [])
+  const hidden = Object.entries(wl.hide).filter(([, v]) => v).map(([k]) => ' wl-hide-' + k).join('')
   return (
-    <div className={'app role-' + role}>
+    <div ref={rootRef} className={'app role-' + role + hidden + (sheet ? ' sheet-' + sheet : '')} style={wlStyle(wl)}>
+      {mode !== 'video' && (
+        <a className="skip-link" href="#canvas-elements" onClick={skipToCanvas}>
+          Skip to canvas
+        </a>
+      )}
       <TopBar />
-      {mode === 'video' ? (
+      {mode === 'video' && !wl.hide.video ? (
         <VideoStudio />
       ) : (
         <div className="main">
           <LeftPanel />
-          <div className="center">
+          <main className="center" aria-label="Design canvas">
             <Canvas />
-            <PagesBar />
-          </div>
-          <aside className="right">
-            <Inspector />
-          </aside>
+            {!wl.hide.pages && <PagesBar />}
+          </main>
+          {!wl.hide.inspector && (
+            <aside className="right" aria-label="Inspector">
+              <Inspector />
+            </aside>
+          )}
+          <nav className="mobile-bar" aria-label="Panels">
+            <button className={sheet === 'left' ? 'on' : ''} aria-pressed={sheet === 'left'} onClick={() => toggleSheet('left')}>
+              ＋ Add / Layers
+            </button>
+            {!wl.hide.inspector && (
+              <button className={sheet === 'right' ? 'on' : ''} aria-pressed={sheet === 'right'} onClick={() => toggleSheet('right')}>
+                ✎ Edit
+              </button>
+            )}
+            <button onClick={() => (setSheet(null), fitToScreen())}>⤢ Fit</button>
+          </nav>
         </div>
       )}
       <Dialogs />
-      {toastMsg && <div className="toast">{toastMsg}</div>}
+      <div className="sr-only" role="status" aria-live="polite">
+        {announcement}
+      </div>
+      {toastMsg && (
+        <div className="toast" role="alert">
+          {toastMsg}
+        </div>
+      )}
     </div>
   )
 }

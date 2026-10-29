@@ -51,3 +51,23 @@
 - Stub only: `src/i18n.ts` + empty `locales/de.ts` (row 64 still fail).
 - Deferred: AI, PDF/X, vectorize, text-on-path, headless/Docker, platforms, white-label, asset sources, a11y, bg-remove ML upgrade.
 - Verification (parent wrap): scripted on `http://127.0.0.1:5183/` — trim 1.5 s, split → 3 clips, music track, text overlay, 3 captions, crossfade, MP4 export AVC+Opus.
+
+## Session 4
+
+| Field | Value |
+|-------|-------|
+| Agent / model | Requested: Claude Sonnet 5.5 High (`claude-sonnet-5-5-high`). Actually ran as: Claude Opus 5.5 in Cursor (model selection was not Sonnet; recorded honestly) |
+| Build folder | `claude-cursor-day-1/` |
+| Skills / MCP | none (no IMG.LY skills, no `imgly_docs`, no CE.SDK / `@cesdk/*` / `@imgly/*`) |
+| Start (ISO local) | 2026-10-29T13:24:46-03:00 |
+| End (ISO local) | 2026-10-29T18:27:15-03:00 |
+| Duration | ~5 h 02 min wall-clock (≈1 h of it waiting on Android SDK / emulator image downloads) |
+| Final `npm run build` | passed (18:27) |
+| Weighted after session | 159 / 159 (67 pass / 0 partial / 0 fail; started at 123 / 159) |
+
+### Notes
+
+- Rows closed (by weight): 45 PDF/X-4, 58 white-label, 60 embed API / web component, 62 Docker renderer, 25 ML background removal, 47 headless batch, 61 headless Node renderer; 63 asset sources, 64 German UI, 55–57 AI generation / editable layers / brand mode, 59 Android app; 18 text on arc, 27 vectorize, 65 keyboard + screen reader (axe-core 0 violations).
+- `npm run build` was re-run after each cluster and stayed green; `npm run build:headless` and `npm run build:android` added.
+- Verification: running app on `http://127.0.0.1:5183/` (button clicks, slider input, scripted state checks), poppler + LittleCMS for PDF/X, Docker for the headless image, a local OpenAI-compatible mock for AI (no real OpenAI key), axe-core for WCAG, Android 14 emulator for the mobile app.
+- Machine side effects: Android SDK in `~/Android/Sdk` (emulator + system image, ~2.5 GB) and build tools in `/tmp/asdk`; AVD `canvasly34` in `~/.android/avd`.
