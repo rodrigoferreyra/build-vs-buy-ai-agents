@@ -1,6 +1,6 @@
 # Spot-test notes
 
-Date: 2026-10-16 (CE.SDK/Claude) · Composer screenshot refreshed 2026-10-17 after session 3 · Ports 5173 (Claude), 5174 (Composer), 5176 (CE.SDK)
+Date: 2026-10-16 (CE.SDK/Claude) · Composer screenshot refreshed 2026-10-17 after session 3 · Claude screenshot refreshed 2026-10-30 after session 4 · Ports 5173 (Claude), 5174 (Composer), 5176 (CE.SDK)
 
 Shared ids: **1, 3, 6, 7, 12, 13, 20, 22, 34, 41**
 
@@ -48,10 +48,12 @@ Screenshot: `screenshots/cursor-day-1-editor.png`
 
 Screenshot: `screenshots/cesdk-day-1-editor.png`
 
-## Rollup (Composer S4 + CE.SDK S4 → dual 159)
+## Rollup (all three at 159)
 
 | Build | pass | partial | fail | weighted |
 |-------|-----:|--------:|-----:|---------:|
-| Claude | 51 | 3 | 13 | 123 |
+| Claude | **67** | **0** | **0** | **159** |
 | Composer | **67** | **0** | **0** | **159** |
 | CE.SDK | **67** | **0** | **0** | **159** |
+
+Claude Sessions 1–3 (Sonnet 5.5 High) were 51 / 3 / 13 = 123. Session 4 (Opus 5.5) self-scored the remaining rows. The ten shared spot-test rows were not re-clicked after Session 4; they still pass.

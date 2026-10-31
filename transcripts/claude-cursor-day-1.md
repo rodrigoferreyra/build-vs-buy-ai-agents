@@ -68,3 +68,11 @@ Session 2 → Session 3: **51 / 3 / 13 (weighted 123/159)**. Pass: 49–54 (trim
 
 ### Honest caveats
 No human QA, Chromium only, PDFs checked with poppler but not Acrobat/preflight. PDF isn't PDF/X; system fonts aren't embedded; RTL/effects/gradients/images are rasterised in PDF. Background removal is a heuristic. Batch is main-thread. I verified most new panels through the store API, not by clicking each control.
+
+## Session 4 (2026-10-29, ~5 h 02 min) — toward 159
+
+Requested Claude Sonnet 5.5 High. Ran as **Claude Opus 5.5**. Same folder, no CE.SDK. Started at 123 / 159, self-scored **159 / 159**.
+
+Closed: PDF/X-4 tag + generated sRGB ICC, ML background removal (U²-Net-p), vectorize, text on an arc, AI tab (dry-run / user key), white-label, embed API + plain-JS host, headless Node + Docker, German UI, custom asset sources, keyboard / axe-core, Android WebView APK on an emulator.
+
+Caveats in `STOPPED.md`: no Acrobat/PitStop, RTL still rasterised in PDF, AI mocked not live OpenAI, Android emulator not a physical phone, no iOS / RN / Flutter.
